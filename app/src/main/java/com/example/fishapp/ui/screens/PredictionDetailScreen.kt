@@ -47,6 +47,10 @@ fun PredictionDetailScreen(
     val scope = rememberCoroutineScope()
     var isDownloading by remember { mutableStateOf(false) }
 
+    // DYNAMIC BASE ADDRESS HOST CONFIGURATION:
+    // Matches your production network config exactly!
+    val backendHostAddress = "192.168.0.176:8000"
+
     Scaffold(
         topBar = {
             AquaTopBar(
@@ -70,23 +74,31 @@ fun PredictionDetailScreen(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Endpoint 5 Image Handshake: Loads the secure binary image stream dynamically using your server address
+                // FIXED: Reads the header token directly from your updated RetrofitClient setup
                 val authenticatedImagePainter = rememberAsyncImagePainter(
                     model = ImageRequest.Builder(context)
-                        .data("http://10.0.2.2:8000/predictions/${item.id}/image") // Maps image path stream endpoint
+                        .data("http://$backendHostAddress/predictions/${item.id}/image") // Endpoint 5 integration mapping
+                        .addHeader("Authorization", com.example.fishapp.api.RetrofitClient.getAuthToken() ?: "") // Attaches active JWT bearer verification
                         .crossfade(true)
                         .build()
                 )
 
-                Image(
-                    painter = authenticatedImagePainter,
-                    contentDescription = "Historical scanned image object stream",
+                // Styled Box placeholder container during network loading passes
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(220.dp)
-                        .clip(RoundedCornerShape(16.dp)),
-                    contentScale = ContentScale.Crop
-                )
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xFFE2E8F0)), // Clean slate fallback color fill
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        painter = authenticatedImagePainter,
+                        contentDescription = "Historical scanned image object stream",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
 
                 AquaCard {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -122,13 +134,12 @@ fun PredictionDetailScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // FIXED: Integrated Premium Downloader Button Intersecting Endpoint 5 Binary Streams
+                // Downloader Button Intersecting Endpoint 5 Binary Streams
                 Button(
                     onClick = {
                         isDownloading = true
                         scope.launch(Dispatchers.IO) {
                             try {
-                                // Hit network stream directly using your unified Retrofit client instance handle
                                 val response = com.example.fishapp.api.RetrofitClient.instance.getPredictionImage(item.id, "")
                                 if (response.isSuccessful && response.body() != null) {
                                     val byteStream = response.body()!!.byteStream()
@@ -199,7 +210,6 @@ private fun saveImageToGallery(context: Context, bitmap: Bitmap, title: String) 
 
     try {
         if (itemUri != null) {
-            // FIXED: Using Kotlin's safe call ?.use block ensures stream is closed and unwraps non-null context safely
             context.contentResolver.openOutputStream(itemUri)?.use { outputStream ->
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
             }

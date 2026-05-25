@@ -21,7 +21,7 @@ sealed class Screen(val route: String) {
     object AddPond               : Screen("add_pond")
     object AdminDashboard        : Screen("admin_dashboard")
     object PredictionDetail      : Screen("prediction_detail_screen") // Definition for the detail report screen
-    object PredictionHistoryList : Screen("prediction_history_list") // ADDED: Definition for the full history view screen
+    object PredictionHistoryList : Screen("prediction_history_list") // Definition for the full history view screen
 }
 
 @Composable
@@ -124,9 +124,14 @@ fun AquaSenseNavGraph(
             )
         }
 
-        // 9. Shared Camera Scanner
+        // 9. Shared Camera Scanner (FIXED: Integrated callback to pass photo URIs into your architecture state machine)
         composable(Screen.CameraScanner.route) {
-            CameraScannerScreen(onClose = { navController.popBackStack() })
+            CameraScannerScreen(
+                onClose = { navController.popBackStack() },
+                onImageCaptured = { capturedUri ->
+                    viewModel.onImageSelected(capturedUri) // Binds captured media to home state variables
+                }
+            )
         }
 
         // 10. Detailed Scan Inspection Report Screen
@@ -137,7 +142,7 @@ fun AquaSenseNavGraph(
             )
         }
 
-        // 11. ADDED: Complete History Log View Screen
+        // 11. Complete History Log View Screen
         composable(Screen.PredictionHistoryList.route) {
             PredictionHistoryListScreen(
                 navController = navController,

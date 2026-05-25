@@ -23,6 +23,11 @@ object RetrofitClient {
         }
     }
 
+    // ADDED: Public helper function so our UI screens can read the pre-formatted Bearer token safely
+    fun getAuthToken(): String? {
+        return authToken
+    }
+
     // Clears the token out of memory when the user logs out
     fun clearAuthToken() {
         authToken = null
