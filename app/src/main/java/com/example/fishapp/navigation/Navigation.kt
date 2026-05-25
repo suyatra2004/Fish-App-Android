@@ -13,7 +13,7 @@ import com.example.fishapp.viewmodel.FishViewModel
 sealed class Screen(val route: String) {
     object LoginSelection    : Screen("login_selection")
     object ConsumerHome      : Screen("consumer_home")
-    object RoleSelection     : Screen("role_selection")
+    object RoleSelection     : Screen("role_selection") // Kept in definitions to avoid compilation breaks elsewhere
     object FarmerHub         : Screen("farmer_hub")
     object FarmerDashboard   : Screen("farmer_dashboard")
     object CameraScanner     : Screen("camera_scanner")
@@ -41,10 +41,16 @@ fun AquaSenseNavGraph(
                         popUpTo(Screen.LoginSelection.route) { inclusive = true }
                     }
                 },
-                onFarmerAdminLoginSuccess = {
-                    // Routes to Role Selection so they can split between Farmer or Admin workflows
-                    navController.navigate(Screen.RoleSelection.route) {
-                        popUpTo(Screen.LoginSelection.route) { inclusive = true }
+                // FIXED: Accepts the specific role string directly from the screen state to handle direct bypass routing
+                onFarmerAdminLoginSuccess = { selectedRole ->
+                    val targetRoute = if (selectedRole.equals("Admin", ignoreCase = true)) {
+                        Screen.AdminDashboard.route
+                    } else {
+                        Screen.FarmerHub.route
+                    }
+
+                    navController.navigate(targetRoute) {
+                        popUpTo(Screen.LoginSelection.route) { inclusive = true } // Wipes login page from backstack memory safely
                     }
                 }
             )
@@ -62,23 +68,19 @@ fun AquaSenseNavGraph(
             )
         }
 
-        // 3. Farmer/Admin Role Selection
+        // 3. Farmer/Admin Role Selection (Bypassed but kept to prevent any structural breaks)
         composable(Screen.RoleSelection.route) {
             RoleSelectionScreen(
                 onBack = {
                     viewModel.logoutUser() // Clear token session on back exit
                     navController.popBackStack()
                 },
-                onFarmerClick = {
-                    navController.navigate(Screen.FarmerHub.route)
-                },
-                onAdminClick = {
-                    navController.navigate(Screen.AdminDashboard.route)
-                }
+                onFarmerClick = { navController.navigate(Screen.FarmerHub.route) },
+                onAdminClick = { navController.navigate(Screen.AdminDashboard.route) }
             )
         }
 
-        // 4. Farmer Service Hub (FIXED: Bound missing navController & viewModel)
+        // 4. Farmer Service Hub
         composable(Screen.FarmerHub.route) {
             FarmerHubScreen(
                 navController = navController,
@@ -102,7 +104,6 @@ fun AquaSenseNavGraph(
         composable(Screen.DiseaseReport.route) {
             DiseaseReportScreen(
                 navController = navController,
-                // Parameter temporarily removed until we open DiseaseReportScreen.kt next
                 onBack = { navController.popBackStack() }
             )
         }
@@ -112,7 +113,7 @@ fun AquaSenseNavGraph(
             AddPondScreen(onBack = { navController.popBackStack() })
         }
 
-        // 8. Admin/Expert Control Center (FIXED: Explicitly named parameters match modern signatures)
+        // 8. Admin/Expert Control Center
         composable(Screen.AdminDashboard.route) {
             AdminDashboard(
                 navController = navController,

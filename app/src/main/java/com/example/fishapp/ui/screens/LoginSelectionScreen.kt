@@ -28,7 +28,7 @@ import com.example.fishapp.viewmodel.FishViewModel
 fun LoginSelectionScreen(
     viewModel: FishViewModel,
     onConsumerLoginSuccess: () -> Unit,
-    onFarmerAdminLoginSuccess: () -> Unit
+    onFarmerAdminLoginSuccess: (String) -> Unit // FIXED: Updated function signature to accept the role parameter
 ) {
     var isConsumerWorkspace by remember { mutableStateOf(true) }
     var isSignUpMode by remember { mutableStateOf(false) }
@@ -45,7 +45,7 @@ fun LoginSelectionScreen(
 
     val authState by viewModel.authUriState
 
-    // FIXED: Wipes out field text dynamically whenever the user toggles between the Consumer and Management workspaces
+    // Wipes out field text dynamically whenever the user toggles between the Consumer and Management workspaces
     LaunchedEffect(isConsumerWorkspace) {
         username = ""
         password = ""
@@ -54,7 +54,7 @@ fun LoginSelectionScreen(
         passwordVisible = false
     }
 
-    // FIXED: Wipes out field text dynamically when switching roles (Farmer <-> Admin) inside the Management workspace
+    // Wipes out field text dynamically when switching roles (Farmer <-> Admin) inside the Management workspace
     LaunchedEffect(selectedManagementRole) {
         username = ""
         password = ""
@@ -85,7 +85,8 @@ fun LoginSelectionScreen(
             if (isConsumerWorkspace) {
                 onConsumerLoginSuccess()
             } else {
-                onFarmerAdminLoginSuccess()
+                // FIXED: Passes the active dynamic string out to the bypass routing engine
+                onFarmerAdminLoginSuccess(selectedManagementRole)
             }
         }
     }

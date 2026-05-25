@@ -1,22 +1,23 @@
 package com.example.fishapp.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,10 +29,12 @@ import com.example.fishapp.viewmodel.FishViewModel
 
 @Composable
 fun AdminDashboard(
-    navController: NavHostController, // ADDED: Direct parameter tracking handle
+    navController: NavHostController,
     onBack: () -> Unit,
     viewModel: FishViewModel
 ) {
+    val context = LocalContext.current
+
     // Automatically query the global report pipeline stream from the server upon launching
     LaunchedEffect(Unit) {
         viewModel.fetchAllReports()
@@ -42,24 +45,71 @@ fun AdminDashboard(
     val isReportsLoading by viewModel.isReportsLoading
     val reportsErrorMessage by viewModel.reportsErrorMessage
 
+    // Dialog state control to toggle exit prompt visibility
+    var showExitDialog by remember { mutableStateOf(false) }
+
+    // FIXED: Intercepts device physical back gestures or keys to show the application exit dialog
+    BackHandler(enabled = true) {
+        showExitDialog = true
+    }
+
+    // SYSTEM EXIT CONFIRMATION DIALOG INTERFACE
+    if (showExitDialog) {
+        AlertDialog(
+            onDismissRequest = { showExitDialog = false },
+            title = {
+                Text(text = "Exit Application", color = TextPrimary, fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Text(text = "Are you sure you want to exit AquaSense?", color = TextSecondary)
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showExitDialog = false
+                        viewModel.logoutUser() // Clear active login session token state maps securely
+                        (context as? android.app.Activity)?.finishAffinity() // Force complete shutdown of application activity stack
+                    }
+                ) {
+                    Text("Yes", color = BrandGreen, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExitDialog = false }) {
+                    Text("No", color = TextSecondary)
+                }
+            }
+        )
+    }
+
     Scaffold(
         containerColor = Color(0xFFF8FAFC) // Light Gray-Blue background
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
 
-            // --- FIXED: Upgraded Custom Header housing Sync Data and Logout Actions ---
+            // --- FIXED: Upgraded Custom Header housing Back Arrow Alert trigger alongside Actions ---
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Brush.horizontalGradient(listOf(BrandGreen, BrandGreenDark)))
                     .statusBarsPadding()
-                    .padding(horizontal = 20.dp, vertical = 20.dp)
+                    .padding(horizontal = 12.dp, vertical = 20.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // FIXED: Embedded high-contrast back navigation button targeting our exit confirmation dialog
+                    IconButton(onClick = { showExitDialog = true }) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Trigger Exit Dialog",
+                            tint = Color.White
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(4.dp))
+
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Expert Console",
@@ -88,7 +138,7 @@ fun AdminDashboard(
                             )
                         }
 
-                        // 2. NEW: Seamless Admin Session Revocation Trigger
+                        // 2. Seamless Admin Session Revocation Trigger
                         IconButton(
                             onClick = {
                                 viewModel.logoutUser() // Purges active token caches and in-memory streams
