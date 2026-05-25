@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Assignment
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -14,18 +15,22 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavHostController
+import com.example.fishapp.navigation.Screen
 import com.example.fishapp.ui.components.*
 import com.example.fishapp.ui.theme.*
 import com.example.fishapp.viewmodel.FishViewModel
 
 @Composable
 fun AdminDashboard(
+    navController: NavHostController, // ADDED: Direct parameter tracking handle
     onBack: () -> Unit,
-    viewModel: FishViewModel // FIXED: Wired up shared state parameter to pull real-time database feeds
+    viewModel: FishViewModel
 ) {
     // Automatically query the global report pipeline stream from the server upon launching
     LaunchedEffect(Unit) {
@@ -41,21 +46,64 @@ fun AdminDashboard(
         containerColor = Color(0xFFF8FAFC) // Light Gray-Blue background
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            // Reusable Top bar with transparently placed manual sync trigger
-            Box(modifier = Modifier.fillMaxWidth()) {
-                AquaTopBar(
-                    title = "Expert Console",
-                    subtitle = "Regional aquaculture monitoring",
-                    onBack = onBack
-                )
 
-                IconButton(
-                    onClick = { viewModel.fetchAllReports() },
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(top = 12.dp, end = 12.dp)
+            // --- FIXED: Upgraded Custom Header housing Sync Data and Logout Actions ---
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Brush.horizontalGradient(listOf(BrandGreen, BrandGreenDark)))
+                    .statusBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 20.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Icon(Icons.Default.Refresh, contentDescription = "Sync Data", tint = Color.White)
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Expert Console",
+                            fontSize = 26.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "Regional aquaculture monitoring",
+                            fontSize = 13.sp,
+                            color = Color.White.copy(alpha = 0.85f)
+                        )
+                    }
+
+                    // Combined Actions Slot
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        // 1. Data Sync Trigger
+                        IconButton(onClick = { viewModel.fetchAllReports() }) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Sync Data",
+                                tint = Color.White
+                            )
+                        }
+
+                        // 2. NEW: Seamless Admin Session Revocation Trigger
+                        IconButton(
+                            onClick = {
+                                viewModel.logoutUser() // Purges active token caches and in-memory streams
+                                navController.navigate(Screen.LoginSelection.route) {
+                                    popUpTo(0) { inclusive = true } // Erases total application backstack trail traces
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Logout,
+                                contentDescription = "Sign Out Admin",
+                                tint = Color.White
+                            )
+                        }
+                    }
                 }
             }
 

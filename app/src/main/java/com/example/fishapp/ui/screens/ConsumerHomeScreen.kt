@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -18,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Camera
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -52,6 +54,43 @@ fun ConsumerHomeScreen(
     val context = LocalContext.current
     val uiState by viewModel.uiState
     val selectedImageUri by viewModel.selectedImageUri
+
+    // Dialog state control to toggle exit prompt visibility
+    var showExitDialog by remember { mutableStateOf(false) }
+
+    // Intercepts phone structural gestures or physical back keys to display confirmation pop-up
+    BackHandler(enabled = true) {
+        showExitDialog = true
+    }
+
+    // SYSTEM EXIT CONFIRMATION DIALOG INTERFACE
+    if (showExitDialog) {
+        AlertDialog(
+            onDismissRequest = { showExitDialog = false },
+            title = {
+                Text(text = "Exit Application", color = TextPrimary, fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Text(text = "Are you sure you want to exit AquaSense?", color = TextSecondary)
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showExitDialog = false
+                        viewModel.logoutUser() // Clear active login session interceptors securely
+                        (context as? android.app.Activity)?.finishAffinity() // Force complete shutdown of background hardware task traces
+                    }
+                ) {
+                    Text("Yes", color = BrandGreen, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExitDialog = false }) {
+                    Text("No", color = TextSecondary)
+                }
+            }
+        )
+    }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
@@ -91,12 +130,32 @@ fun ConsumerHomeScreen(
                     )
                     .padding(24.dp)
             ) {
-                Column {
-                    IconButton(onClick = onBack, modifier = Modifier.offset(x = (-12).dp)) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = null, tint = Color.White)
+                Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
+                    // Top Actions Row containing Back (Exit App Prompt) and Logout Buttons
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = { showExitDialog = true }, modifier = Modifier.offset(x = (-12).dp)) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Exit Alert Handler", tint = Color.White)
+                        }
+
+                        // ADDED: High-contrast Logout Action button linked to clean redirection
+                        IconButton(onClick = {
+                            viewModel.logoutUser() // Drops backend authorization tokens cleanly
+                            navController.navigate(Screen.LoginSelection.route) {
+                                popUpTo(0) { inclusive = true } // Wipes total navigation backstack tracking memory
+                            }
+                        }, modifier = Modifier.offset(x = 12.dp)) {
+                            Icon(Icons.Default.Logout, contentDescription = "Sign Out User", tint = Color.White)
+                        }
                     }
-                    Text("Freshness Scanner", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                    Text("Analyze fish from camera or gallery", fontSize = 14.sp, color = Color.White.copy(alpha = 0.8f))
+
+                    Column {
+                        Text("Freshness Scanner", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("Analyze fish from camera or gallery", fontSize = 14.sp, color = Color.White.copy(alpha = 0.8f))
+                    }
                 }
             }
 

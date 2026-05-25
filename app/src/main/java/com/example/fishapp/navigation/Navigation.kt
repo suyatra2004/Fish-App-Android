@@ -78,9 +78,11 @@ fun AquaSenseNavGraph(
             )
         }
 
-        // 4. Farmer Service Hub
+        // 4. Farmer Service Hub (FIXED: Bound missing navController & viewModel)
         composable(Screen.FarmerHub.route) {
             FarmerHubScreen(
+                navController = navController,
+                viewModel = viewModel,
                 onManagePonds = { navController.navigate(Screen.FarmerDashboard.route) },
                 onReportDisease = { navController.navigate(Screen.DiseaseReport.route) },
                 onBack = { navController.popBackStack() }
@@ -110,9 +112,10 @@ fun AquaSenseNavGraph(
             AddPondScreen(onBack = { navController.popBackStack() })
         }
 
-        // 8. Admin/Expert Control Center (FIXED: Explicitly named parameters match Step 4 completely)
+        // 8. Admin/Expert Control Center (FIXED: Explicitly named parameters match modern signatures)
         composable(Screen.AdminDashboard.route) {
             AdminDashboard(
+                navController = navController,
                 viewModel = viewModel,
                 onBack = { navController.popBackStack() }
             )
