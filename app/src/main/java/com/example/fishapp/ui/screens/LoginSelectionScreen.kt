@@ -14,16 +14,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewModelScope
 import com.example.fishapp.ui.theme.*
 import com.example.fishapp.viewmodel.AuthUiState
 import com.example.fishapp.viewmodel.FishViewModel
-import kotlinx.coroutines.launch
 
 @Composable
 fun LoginSelectionScreen(
@@ -40,12 +39,45 @@ fun LoginSelectionScreen(
     var fullName by remember { mutableStateOf("") }
     var phoneNumber by remember { mutableStateOf("") }
 
-    // Issue 1 Fix: Explicit Management Role Selector State (Farmer vs Admin)
+    // Explicit Management Role Selector State (Farmer vs Admin)
     var selectedManagementRole by remember { mutableStateOf("Farmer") }
     var passwordVisible by remember { mutableStateOf(false) }
 
     val authState by viewModel.authUriState
-    val coroutineScope = rememberCoroutineScope()
+
+    // FIXED: Wipes out field text dynamically whenever the user toggles between the Consumer and Management workspaces
+    LaunchedEffect(isConsumerWorkspace) {
+        username = ""
+        password = ""
+        fullName = ""
+        phoneNumber = ""
+        passwordVisible = false
+    }
+
+    // FIXED: Wipes out field text dynamically when switching roles (Farmer <-> Admin) inside the Management workspace
+    LaunchedEffect(selectedManagementRole) {
+        username = ""
+        password = ""
+        fullName = ""
+        phoneNumber = ""
+        passwordVisible = false
+    }
+
+    // Reusable Custom TextField Colors configuration
+    val inputFieldColors = OutlinedTextFieldDefaults.colors(
+        focusedTextColor = TextPrimary,
+        unfocusedTextColor = TextPrimary,
+        focusedLabelColor = BrandGreen,
+        unfocusedLabelColor = TextSecondary,
+        focusedLeadingIconColor = BrandGreen,
+        unfocusedLeadingIconColor = TextSecondary,
+        focusedTrailingIconColor = TextSecondary,
+        unfocusedTrailingIconColor = TextSecondary,
+        focusedContainerColor = Color.White,
+        unfocusedContainerColor = Color.White,
+        focusedBorderColor = BrandGreen,
+        unfocusedBorderColor = Color(0xFFCBD5E1)
+    )
 
     // Observe Authentication States for Navigation routing
     LaunchedEffect(authState) {
@@ -129,7 +161,7 @@ fun LoginSelectionScreen(
                             )
                             .clickable {
                                 isConsumerWorkspace = true
-                                isSignUpMode = false // Reset mode on switch
+                                isSignUpMode = false
                             },
                         contentAlignment = Alignment.Center
                     ) {
@@ -150,7 +182,7 @@ fun LoginSelectionScreen(
                             )
                             .clickable {
                                 isConsumerWorkspace = false
-                                isSignUpMode = false // Reset mode on switch
+                                isSignUpMode = false
                             },
                         contentAlignment = Alignment.Center
                     ) {
@@ -165,7 +197,7 @@ fun LoginSelectionScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Mode Title Indicator (Sign In vs Sign Up) - Fix for Issue 2
+                // Mode Title Indicator (Sign In vs Sign Up)
                 Text(
                     text = if (isSignUpMode) "Create Account" else "Welcome Back",
                     fontSize = 22.sp,
@@ -175,7 +207,7 @@ fun LoginSelectionScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Issue 1 Fix: Management Role Sub-Selector (Only visible in Management Workspace)
+                // Management Role Sub-Selector (Only visible in Management Workspace)
                 if (!isConsumerWorkspace) {
                     Row(
                         modifier = Modifier
@@ -209,23 +241,27 @@ fun LoginSelectionScreen(
                     }
                 }
 
-                // Dynamic Input Form Fields
+                // Email/Username Input
                 OutlinedTextField(
                     value = username,
                     onValueChange = { username = it },
                     label = { Text("Email/Username") },
-                    leadingIcon = { Icon(Icons.Default.Email, contentDescription = null, tint = TextSecondary) },
+                    textStyle = TextStyle(color = TextPrimary, fontSize = 16.sp),
+                    leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+                    colors = inputFieldColors,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
+                // Password Input
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
                     label = { Text("Password") },
-                    leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = TextSecondary) },
+                    textStyle = TextStyle(color = TextPrimary, fontSize = 16.sp),
+                    leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
                     trailingIcon = {
                         IconButton(onClick = { passwordVisible = !passwordVisible }) {
                             Icon(
@@ -235,11 +271,12 @@ fun LoginSelectionScreen(
                         }
                     },
                     visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    colors = inputFieldColors,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 )
 
-                // Extra Sign Up Fields (Visible only when Sign Up mode is active) - Fix for Issue 2
+                // Extra Sign Up Fields (Visible only when Sign Up mode is active)
                 AnimatedVisibility(
                     visible = isSignUpMode,
                     enter = fadeIn() + expandVertically(),
@@ -251,7 +288,9 @@ fun LoginSelectionScreen(
                             value = fullName,
                             onValueChange = { fullName = it },
                             label = { Text("Full Name") },
-                            leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = TextSecondary) },
+                            textStyle = TextStyle(color = TextPrimary, fontSize = 16.sp),
+                            leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
+                            colors = inputFieldColors,
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp)
                         )
@@ -260,7 +299,9 @@ fun LoginSelectionScreen(
                             value = phoneNumber,
                             onValueChange = { phoneNumber = it },
                             label = { Text("Phone Number") },
-                            leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null, tint = TextSecondary) },
+                            textStyle = TextStyle(color = TextPrimary, fontSize = 16.sp),
+                            leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null) },
+                            colors = inputFieldColors,
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp)
                         )
@@ -284,14 +325,12 @@ fun LoginSelectionScreen(
                 Button(
                     onClick = {
                         if (isSignUpMode) {
-                            // Issue 2 Fix: Execute precise API registration routes based on context
                             if (isConsumerWorkspace) {
                                 viewModel.registerConsumerAccount(username, password, fullName, phoneNumber)
                             } else {
                                 viewModel.registerManagementAccount(username, password, fullName, phoneNumber, selectedManagementRole)
                             }
                         } else {
-                            // Run the single central API authentication pipeline
                             viewModel.loginUser(username, password)
                         }
                     },
@@ -315,7 +354,7 @@ fun LoginSelectionScreen(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Alternative Option Toggle (Switch between Sign In and Sign Up modes) - Fix for Issue 2
+                // Alternative Option Toggle
                 Row(
                     modifier = Modifier.clickable {
                         isSignUpMode = !isSignUpMode

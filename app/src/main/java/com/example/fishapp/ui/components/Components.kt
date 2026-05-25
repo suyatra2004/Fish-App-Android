@@ -54,7 +54,7 @@ fun GradientHeader(
     }
 }
 
-// ─── 2. Aqua Top Bar (FIXED) ──────────────────────────────────────────────────
+// ─── 2. Aqua Top Bar (FIXED & STRUCTURALLY REWIRED) ──────────────────────────
 @Composable
 fun AquaTopBar(
     title: String,
@@ -64,24 +64,54 @@ fun AquaTopBar(
     GradientHeader {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding() // Ensures the bar layouts sit safely beneath phone system drop-downs
         ) {
             if (onBack != null) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
+                IconButton(
+                    onClick = onBack, // FIXED: Securely triggers your navigation controller stack pop!
+                    modifier = Modifier
+                        .size(48.dp) // Standard Android accessibility interaction target size
+                        .padding(end = 8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Navigate Back",
+                        tint = Color.White
+                    )
                 }
+            } else {
+                // Adds a clean structural indent if there is no back navigation button active
+                Spacer(modifier = Modifier.width(8.dp))
             }
-            Column(modifier = Modifier.padding(start = if (onBack != null) 8.dp else 16.dp)) {
-                Text(text = title, style = MaterialTheme.typography.titleLarge, color = Color.White, fontWeight = FontWeight.Bold)
+
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(vertical = 2.dp)
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 22.sp
+                )
                 if (subtitle != null) {
-                    Text(text = subtitle, style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.8f))
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White.copy(alpha = 0.85f),
+                        fontSize = 13.sp
+                    )
                 }
             }
         }
     }
 }
 
-// ─── 3. Stat Chip (FIXED) ─────────────────────────────────────────────────────
+// ─── 3. Stat Chip ─────────────────────────────────────────────────────────────
 @Composable
 fun StatChip(value: String, label: String, valueColor: Color) {
     Surface(
