@@ -239,11 +239,14 @@ fun ConsumerHomeScreen(
                         color = BrandGreen,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp,
-                        modifier = Modifier.clickable { /* Fallback list handling route anchor */ }
+                        // FIXED: Routed modifier to open the complete prediction logs screen layout flawlessly
+                        modifier = Modifier.clickable {
+                            navController.navigate(Screen.PredictionHistoryList.route)
+                        }
                     )
                 }
 
-                // FIXED: DYNAMIC PRODUCTION PIPELINE LIST FEED CONTROLLER
+                // DYNAMIC PRODUCTION PIPELINE LIST FEED CONTROLLER
                 if (isHistoryLoading) {
                     Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = BrandGreen)

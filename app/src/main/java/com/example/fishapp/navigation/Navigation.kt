@@ -11,16 +11,17 @@ import com.example.fishapp.viewmodel.FishViewModel
 
 // ─── Route Constants ──────────────────────────────────────────────────────────
 sealed class Screen(val route: String) {
-    object LoginSelection    : Screen("login_selection")
-    object ConsumerHome      : Screen("consumer_home")
-    object RoleSelection     : Screen("role_selection") // Kept in definitions to avoid compilation breaks elsewhere
-    object FarmerHub         : Screen("farmer_hub")
-    object FarmerDashboard   : Screen("farmer_dashboard")
-    object CameraScanner     : Screen("camera_scanner")
-    object DiseaseReport     : Screen("disease_report")
-    object AddPond           : Screen("add_pond")
-    object AdminDashboard    : Screen("admin_dashboard")
-    object PredictionDetail  : Screen("prediction_detail_screen") // ADDED: Definition for the detail report screen
+    object LoginSelection        : Screen("login_selection")
+    object ConsumerHome          : Screen("consumer_home")
+    object RoleSelection         : Screen("role_selection") // Kept in definitions to avoid compilation breaks elsewhere
+    object FarmerHub             : Screen("farmer_hub")
+    object FarmerDashboard       : Screen("farmer_dashboard")
+    object CameraScanner         : Screen("camera_scanner")
+    object DiseaseReport         : Screen("disease_report")
+    object AddPond               : Screen("add_pond")
+    object AdminDashboard        : Screen("admin_dashboard")
+    object PredictionDetail      : Screen("prediction_detail_screen") // Definition for the detail report screen
+    object PredictionHistoryList : Screen("prediction_history_list") // ADDED: Definition for the full history view screen
 }
 
 @Composable
@@ -131,6 +132,14 @@ fun AquaSenseNavGraph(
         // 10. Detailed Scan Inspection Report Screen
         composable(Screen.PredictionDetail.route) {
             PredictionDetailScreen(
+                navController = navController,
+                viewModel = viewModel
+            )
+        }
+
+        // 11. ADDED: Complete History Log View Screen
+        composable(Screen.PredictionHistoryList.route) {
+            PredictionHistoryListScreen(
                 navController = navController,
                 viewModel = viewModel
             )
