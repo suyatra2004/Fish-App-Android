@@ -11,6 +11,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -54,6 +55,15 @@ fun ConsumerHomeScreen(
     val context = LocalContext.current
     val uiState by viewModel.uiState
     val selectedImageUri by viewModel.selectedImageUri
+
+    // FIXED: Real-time Prediction History States Hook
+    val historyList by viewModel.historyList
+    val isHistoryLoading by viewModel.isHistoryLoading
+
+    // Automatically queries backend servers for previous scan results upon launching
+    LaunchedEffect(Unit) {
+        viewModel.fetchPredictionHistory()
+    }
 
     // Dialog state control to toggle exit prompt visibility
     var showExitDialog by remember { mutableStateOf(false) }
@@ -141,7 +151,7 @@ fun ConsumerHomeScreen(
                             Icon(Icons.Default.ArrowBack, contentDescription = "Exit Alert Handler", tint = Color.White)
                         }
 
-                        // ADDED: High-contrast Logout Action button linked to clean redirection
+                        // High-contrast Logout Action button linked to clean redirection
                         IconButton(onClick = {
                             viewModel.logoutUser() // Drops backend authorization tokens cleanly
                             navController.navigate(Screen.LoginSelection.route) {
@@ -217,29 +227,77 @@ fun ConsumerHomeScreen(
                     else -> {}
                 }
 
+                // --- History Header Area ---
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     SectionLabel("Recent History")
-                    Text("View All", color = BrandGreen, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text(
+                        text = "View All",
+                        color = BrandGreen,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        modifier = Modifier.clickable { /* Fallback list handling route anchor */ }
+                    )
                 }
 
-                AquaCard {
-                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier.size(50.dp).background(BrandGreen.copy(alpha = 0.1f), RoundedCornerShape(12.dp)),
-                            contentAlignment = Alignment.Center
+                // FIXED: DYNAMIC PRODUCTION PIPELINE LIST FEED CONTROLLER
+                if (isHistoryLoading) {
+                    Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = BrandGreen)
+                    }
+                } else if (historyList.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                        Text(text = "No scan histories found. Run a new scan above!", color = TextSecondary, fontSize = 13.sp)
+                    }
+                } else {
+                    // Iterates dynamically to render up to the 3 most recent real database scan returns
+                    historyList.take(3).forEach { item ->
+                        AquaCard(
+                            onClick = {
+                                // Endpoint 4: Pull single detail object, then perform safe scene navigation transition
+                                viewModel.fetchPredictionDetail(item.id) {
+                                    navController.navigate("prediction_detail_screen")
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(Icons.Default.History, contentDescription = null, tint = BrandGreen)
+                            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier.size(50.dp).background(BrandGreen.copy(alpha = 0.1f), RoundedCornerShape(12.dp)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Default.History, contentDescription = null, tint = BrandGreen)
+                                }
+                                Spacer(Modifier.width(16.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(text = item.species, fontWeight = FontWeight.Bold, color = TextPrimary)
+                                    Text(
+                                        text = "${item.created_at.take(10)} • Match: ${item.species_confidence_percent}",
+                                        fontSize = 12.sp,
+                                        color = TextSecondary
+                                    )
+                                }
+
+                                val isHealthy = item.disease_status.contains("HEALTHY", ignoreCase = true) || item.disease_status.contains("FRESH", ignoreCase = true)
+                                val badgeColor = if (isHealthy) BrandGreen else Color.Red
+                                Surface(
+                                    shape = RoundedCornerShape(20.dp),
+                                    color = badgeColor.copy(alpha = 0.1f)
+                                ) {
+                                    Text(
+                                        text = item.disease_status.uppercase(),
+                                        color = badgeColor,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
                         }
-                        Spacer(Modifier.width(16.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Rohu Fish", fontWeight = FontWeight.Bold, color = TextPrimary)
-                            Text("Yesterday • Verified Fresh", fontSize = 12.sp, color = TextSecondary)
-                        }
-                        FreshnessBadge(com.example.fishapp.model.FreshnessStatus.FRESH)
+                        Spacer(modifier = Modifier.height(8.dp))
                     }
                 }
             }

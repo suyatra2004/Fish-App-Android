@@ -20,6 +20,7 @@ sealed class Screen(val route: String) {
     object DiseaseReport     : Screen("disease_report")
     object AddPond           : Screen("add_pond")
     object AdminDashboard    : Screen("admin_dashboard")
+    object PredictionDetail  : Screen("prediction_detail_screen") // ADDED: Definition for the detail report screen
 }
 
 @Composable
@@ -125,6 +126,14 @@ fun AquaSenseNavGraph(
         // 9. Shared Camera Scanner
         composable(Screen.CameraScanner.route) {
             CameraScannerScreen(onClose = { navController.popBackStack() })
+        }
+
+        // 10. Detailed Scan Inspection Report Screen
+        composable(Screen.PredictionDetail.route) {
+            PredictionDetailScreen(
+                navController = navController,
+                viewModel = viewModel
+            )
         }
     }
 }

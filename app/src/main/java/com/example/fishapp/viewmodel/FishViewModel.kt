@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fishapp.api.*
+import com.example.fishapp.model.PredictionHistoryItem // Imported your newly created data model
 import kotlinx.coroutines.launch
 import okhttp3.MultipartBody
 
@@ -66,6 +67,25 @@ class FishViewModel : ViewModel() {
     private val _reportsErrorMessage = mutableStateOf<String?>(null)
     val reportsErrorMessage: State<String?> = _reportsErrorMessage
 
+    // ==========================================
+    // NEW: CONSUMER SCAN PREDICTION HISTORY STATES
+    // ==========================================
+    private val _historyList = mutableStateOf<List<PredictionHistoryItem>>(emptyList())
+    val historyList: State<List<PredictionHistoryItem>> = _historyList
+
+    private val _isHistoryLoading = mutableStateOf(false)
+    val isHistoryLoading: State<Boolean> = _isHistoryLoading
+
+    private val _historyErrorMessage = mutableStateOf<String?>(null)
+    val historyErrorMessage: State<String?> = _historyErrorMessage
+
+    // For single item inspection detailed caching
+    private val _currentDetailItem = mutableStateOf<PredictionHistoryItem?>(null)
+    val currentDetailItem: State<PredictionHistoryItem?> = _currentDetailItem
+
+    private val _isDetailLoading = mutableStateOf(false)
+    val isDetailLoading: State<Boolean> = _isDetailLoading
+
 
     // ==========================================
     // EXISTING FUNCTIONS (Preserved)
@@ -91,6 +111,7 @@ class FishViewModel : ViewModel() {
                 val response = RetrofitClient.instance.getPrediction(imagePart,"")
                 if (response.isSuccessful && response.body() != null) {
                     _uiState.value = PredictionUiState.Success(response.body()!!)
+                    fetchPredictionHistory() // Refresh the user's history list instantly after making a new scan!
                 } else {
                     if (response.code() == 401) {
                         _uiState.value = PredictionUiState.Error("Session expired. Please log in again.")
@@ -258,6 +279,61 @@ class FishViewModel : ViewModel() {
         }
     }
 
+    // ==========================================
+    // NEW CONSUMER OPERATIONS (Prediction History Handshaking)
+    // ==========================================
+
+    /**
+     * API Endpoint 3 Implementation: Queries background server for historical user scans
+     */
+    fun fetchPredictionHistory() {
+        viewModelScope.launch {
+            _isHistoryLoading.value = true
+            _historyErrorMessage.value = null
+            try {
+                val response = RetrofitClient.instance.getPredictionHistory("")
+                if (response.isSuccessful && response.body() != null) {
+                    _historyList.value = response.body()!!
+                } else {
+                    if (response.code() == 401) {
+                        _historyErrorMessage.value = "Session expired. Please login again."
+                        logoutUser()
+                    } else {
+                        _historyErrorMessage.value = "Failed to load records feed (Code: ${response.code()})"
+                    }
+                }
+            } catch (e: Exception) {
+                _historyErrorMessage.value = "Cannot reach server pipeline streams."
+            } finally {
+                _isHistoryLoading.value = false
+            }
+        }
+    }
+
+    /**
+     * API Endpoint 4 Implementation: Fetches a single scan's unredacted property metrics
+     */
+    fun fetchPredictionDetail(predictionId: Int, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            _isDetailLoading.value = true
+            try {
+                val response = RetrofitClient.instance.getPredictionDetail(predictionId, "")
+                if (response.isSuccessful && response.body() != null) {
+                    _currentDetailItem.value = response.body()!!
+                    onSuccess() // Execute layout scene transition callback seamlessly
+                }
+            } catch (e: Exception) {
+                // Background debugging streams go here
+            } finally {
+                _isDetailLoading.value = false
+            }
+        }
+    }
+
+    // ==========================================
+    // CLOSURE OPERATIONS
+    // ==========================================
+
     /**
      * Clears current active user sessions out of memory gracefully
      */
@@ -265,6 +341,8 @@ class FishViewModel : ViewModel() {
         _authUriState.value = AuthUiState.Unauthenticated
         _pondsList.value = emptyList()
         _reportsList.value = emptyList() // Clean up expert records cache
+        _historyList.value = emptyList() // Purge user scanning profile tracking history cleanly
+        _currentDetailItem.value = null  // Destroy active detail inspections context
         resetState()
         RetrofitClient.clearAuthToken()
     }

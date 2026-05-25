@@ -5,6 +5,7 @@ import okhttp3.RequestBody
 import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.*
+import com.example.fishapp.model.PredictionHistoryItem // ADDED: Imports your new data model cleanly
 
 // ==========================================
 // 1. AUTHENTICATION & REQUEST DATA CLASSES
@@ -138,13 +139,28 @@ interface FishDetectionApi {
     @POST("predict")
     suspend fun getPrediction(
         @Part file: MultipartBody.Part,
-        @Header("Authorization") bearerToken: String = "" // FIXED: Assigned empty default value to prevent parameter errors
+        @Header("Authorization") bearerToken: String = ""
     ): Response<FishPredictionResponse>
 
+    // FIXED: Updated response mapping format from individual response to our history tracking items
     @GET("predictions")
     suspend fun getPredictionHistory(
         @Header("Authorization") bearerToken: String = ""
-    ): Response<List<FishPredictionResponse>>
+    ): Response<List<PredictionHistoryItem>>
+
+    // ADDED - Endpoint 4: Query a single detailed node report from user memory
+    @GET("predictions/{prediction_id}")
+    suspend fun getPredictionDetail(
+        @Path("prediction_id") predictionId: Int,
+        @Header("Authorization") bearerToken: String = ""
+    ): Response<PredictionHistoryItem>
+
+    // ADDED - Endpoint 5: Fetch unredacted historical image stream with secure header tokens
+    @GET("predictions/{prediction_id}/image")
+    suspend fun getPredictionImage(
+        @Path("prediction_id") predictionId: Int,
+        @Header("Authorization") bearerToken: String = ""
+    ): Response<ResponseBody>
 
 
     // --- Farmer Operational Endpoints ---
@@ -157,7 +173,7 @@ interface FishDetectionApi {
 
     @GET("ponds")
     suspend fun listPonds(
-        @Header("Authorization") bearerToken: String = "" // FIXED: Assigned empty default value to match FishViewModel invocation
+        @Header("Authorization") bearerToken: String = ""
     ): Response<List<PondResponse>>
 
     @Multipart
