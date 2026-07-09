@@ -5,7 +5,7 @@ import okhttp3.RequestBody
 import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.*
-import com.example.fishapp.model.PredictionHistoryItem // ADDED: Imports your new data model cleanly
+import com.example.fishapp.model.PredictionHistoryItem
 
 // ==========================================
 // 1. AUTHENTICATION & REQUEST DATA CLASSES
@@ -19,7 +19,8 @@ data class LoginRequest(
 data class TokenResponse(
     val access_token: String,
     val token_type: String,
-    val expires_in: Int // in seconds
+    val expires_in: Int, // in seconds
+    val role: String // Added role field from docs
 )
 
 data class ConsumerRegisterRequest(
@@ -42,13 +43,6 @@ data class UserResponse(
     val role: String,
     val disabled: Boolean,
     val phone_number: String?
-)
-
-data class PondCreateRequest(
-    val name: String,
-    val ph: Double,
-    val temperature: Double,
-    val pond_size: String?
 )
 
 // ==========================================
@@ -78,14 +72,17 @@ data class FishPredictionResponse(
     val prediction_id: Int
 )
 
+// FIXED: Updated PondResponse structure to match the geo-tagged parameters
 data class PondResponse(
     val id: Int,
     val name: String,
-    val ph: Double,
-    val temperature: Double,
-    val pond_size: String?,
+    val latitude: Double?,
+    val longitude: Double?,
+    val estimated_area: Double?,
+    val fish_species: List<String>,
     val verified: Boolean,
-    val created_at: String
+    val created_at: String,
+    val image_url: String?
 )
 
 data class ReportResponse(
@@ -142,20 +139,17 @@ interface FishDetectionApi {
         @Header("Authorization") bearerToken: String = ""
     ): Response<FishPredictionResponse>
 
-    // FIXED: Updated response mapping format from individual response to our history tracking items
     @GET("predictions")
     suspend fun getPredictionHistory(
         @Header("Authorization") bearerToken: String = ""
     ): Response<List<PredictionHistoryItem>>
 
-    // ADDED - Endpoint 4: Query a single detailed node report from user memory
     @GET("predictions/{prediction_id}")
     suspend fun getPredictionDetail(
         @Path("prediction_id") predictionId: Int,
         @Header("Authorization") bearerToken: String = ""
     ): Response<PredictionHistoryItem>
 
-    // ADDED - Endpoint 5: Fetch unredacted historical image stream with secure header tokens
     @GET("predictions/{prediction_id}/image")
     suspend fun getPredictionImage(
         @Path("prediction_id") predictionId: Int,
@@ -165,16 +159,35 @@ interface FishDetectionApi {
 
     // --- Farmer Operational Endpoints ---
 
+    // FIXED: Explicitly bound the key "geo_image" and matched parameter sequencing to prevent compilation crashes
+    @Multipart
     @POST("ponds")
     suspend fun createPond(
-        @Body request: PondCreateRequest,
-        @Header("Authorization") bearerToken: String = ""
+        @Part("name") name: RequestBody,
+        @Part("latitude") latitude: RequestBody,
+        @Part("longitude") longitude: RequestBody,
+        @Part("estimated_area") estimatedArea: RequestBody,
+        @Part("fish_species") fishSpecies: RequestBody,
+        @Part geoImage: MultipartBody.Part // Matches your FishViewModel's invocation parameter sequence mapping
     ): Response<PondResponse>
 
     @GET("ponds")
     suspend fun listPonds(
         @Header("Authorization") bearerToken: String = ""
     ): Response<List<PondResponse>>
+
+    // ADDED: Endpoint 5 & 6 supporting specific single pond details and image rendering engines
+    @GET("ponds/{pond_id}")
+    suspend fun getPondDetail(
+        @Path("pond_id") pondId: Int,
+        @Header("Authorization") bearerToken: String = ""
+    ): Response<PondResponse>
+
+    @GET("ponds/{pond_id}/image")
+    suspend fun getPondImage(
+        @Path("pond_id") pondId: Int,
+        @Header("Authorization") bearerToken: String = ""
+    ): Response<ResponseBody>
 
     @Multipart
     @POST("reports")

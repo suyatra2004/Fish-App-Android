@@ -111,8 +111,11 @@ fun AquaSenseNavGraph(
         }
 
         // 7. Add New Pond Form
-        composable(Screen.AddPond.route) {
-            AddPondScreen(onBack = { navController.popBackStack() })
+        composable("add_pond_screen") { // Or whatever your route string name is
+            AddPondScreen(
+                onBack = { navController.popBackStack() },
+                viewModel = viewModel // <-- ADD THIS LINE HERE
+            )
         }
 
         // 8. Admin/Expert Control Center

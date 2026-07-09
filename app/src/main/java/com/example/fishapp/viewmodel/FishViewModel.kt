@@ -1,14 +1,17 @@
 package com.example.fishapp.viewmodel
 
+import android.content.Context
 import android.net.Uri
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fishapp.api.*
-import com.example.fishapp.model.PredictionHistoryItem // Imported your newly created data model
+import com.example.fishapp.model.PredictionHistoryItem
 import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 
 // Keeps your excellent UI State machine perfectly intact
 sealed class PredictionUiState {
@@ -108,7 +111,7 @@ class FishViewModel : ViewModel() {
             _uiState.value = PredictionUiState.Loading
             try {
                 // The updated RetrofitClient automatically attaches the token interceptor!
-                val response = RetrofitClient.instance.getPrediction(imagePart,"")
+                val response = RetrofitClient.instance.getPrediction(imagePart, "")
                 if (response.isSuccessful && response.body() != null) {
                     _uiState.value = PredictionUiState.Success(response.body()!!)
                     fetchPredictionHistory() // Refresh the user's history list instantly after making a new scan!
@@ -345,5 +348,59 @@ class FishViewModel : ViewModel() {
         _currentDetailItem.value = null  // Destroy active detail inspections context
         resetState()
         RetrofitClient.clearAuthToken()
+    }
+
+    /**
+     * Packages multi-part properties and coordinates for storage via Endpoint 3
+     */
+    /**
+     * Packages multi-part properties and coordinates for storage via Endpoint 3
+     */
+    fun uploadNewPond(
+        context: Context,
+        name: String,
+        lat: Double,
+        lng: Double,
+        area: Double,
+        speciesList: List<String>,
+        imageUri: Uri,
+        onSuccess: () -> Unit
+    ) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val mediaType = "text/plain".toMediaTypeOrNull()
+                val namePart = name.toRequestBody(mediaType)
+                val latPart = lat.toString().toRequestBody(mediaType)
+                val lngPart = lng.toString().toRequestBody(mediaType)
+                val areaPart = area.toString().toRequestBody(mediaType)
+
+                val speciesString = speciesList.joinToString(", ")
+                val speciesPart = speciesString.toRequestBody(mediaType)
+
+                val inputStream = context.contentResolver.openInputStream(imageUri)
+                val bytes = inputStream?.readBytes()
+                inputStream?.close()
+
+                if (bytes != null) {
+                    val imageMediaType = "image/jpeg".toMediaTypeOrNull()
+                    val requestFile = bytes.toRequestBody(imageMediaType)
+                    val imagePart = MultipartBody.Part.createFormData("geo_image", "pond_scan.jpg", requestFile)
+
+                    val response = RetrofitClient.instance.createPond(
+                        namePart, latPart, lngPart, areaPart, speciesPart, imagePart
+                    )
+
+                    if (response.isSuccessful) {
+                        fetchFarmerPonds()
+                        // FIXED: Changed from launch to withContext to cleanly switch thread contexts
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            onSuccess()
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
     }
 }

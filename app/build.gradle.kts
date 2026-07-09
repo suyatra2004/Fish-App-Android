@@ -44,25 +44,36 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+    // Core Navigation & Design Layouts
     implementation("androidx.navigation:navigation-compose:2.7.7")
     implementation("androidx.compose.material:material-icons-extended:1.6.3")
+
+    // CameraX Engine Modules
     val camerax_version = "1.3.0"
     implementation("androidx.camera:camera-core:$camerax_version")
     implementation("androidx.camera:camera-camera2:$camerax_version")
     implementation("androidx.camera:camera-lifecycle:$camerax_version")
     implementation("androidx.camera:camera-view:$camerax_version")
+
+    // Networking Infrastructure
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
-    // Gson to convert the FastAPI JSON response into Kotlin Objects
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
-    // OkHttp for logging (helpful for debugging)
+    implementation("com.squareup.okhttp3:okhttp:4.11.0") // Explicit base okhttp dependency
     implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
-    // Coil for image loading
+
+    // Media Core
     implementation("io.coil-kt:coil-compose:2.5.0")
+
+    // FIXED: Corrected Google Play Services Location compilation format
+    implementation("com.google.android.gms:play-services-location:21.0.1")
 }
