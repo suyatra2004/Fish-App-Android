@@ -76,28 +76,39 @@ fun AddPondScreen(
             if (uri != null) {
                 isProcessingLocation = true
                 scope.launch(Dispatchers.IO) {
-                    val location = com.example.fishapp.utils.LocationWatermarkEngine.getCurrentLocation(context)
-                    if (location != null) {
-                        latitude = location.latitude
-                        longitude = location.longitude
+                    // CRASH FIX: Ensure runtime explicit checks protect the asynchronous background thread invocation
+                    val hasFineLocation = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                    val hasCoarseLocation = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
-                        val addressText = com.example.fishapp.utils.LocationWatermarkEngine.getReadableAddress(context, location.latitude, location.longitude)
-                        val stampedUri = com.example.fishapp.utils.LocationWatermarkEngine.addGpsWatermark(
-                            context = context,
-                            sourceUri = uri,
-                            lat = location.latitude,
-                            lng = location.longitude,
-                            addressText = addressText
-                        )
-                        withContext(Dispatchers.Main) {
-                            watermarkedImageUri = stampedUri
-                            isProcessingLocation = false
-                            Toast.makeText(context, "GPS metadata stamped successfully!", Toast.LENGTH_SHORT).show()
+                    if (hasFineLocation || hasCoarseLocation) {
+                        val location = com.example.fishapp.utils.LocationWatermarkEngine.getCurrentLocation(context)
+                        if (location != null) {
+                            latitude = location.latitude
+                            longitude = location.longitude
+
+                            val addressText = com.example.fishapp.utils.LocationWatermarkEngine.getReadableAddress(context, location.latitude, location.longitude)
+                            val stampedUri = com.example.fishapp.utils.LocationWatermarkEngine.addGpsWatermark(
+                                context = context,
+                                sourceUri = uri,
+                                lat = location.latitude,
+                                lng = location.longitude,
+                                addressText = addressText
+                            )
+                            withContext(Dispatchers.Main) {
+                                watermarkedImageUri = stampedUri
+                                isProcessingLocation = false
+                                Toast.makeText(context, "GPS metadata stamped successfully!", Toast.LENGTH_SHORT).show()
+                            }
+                        } else {
+                            withContext(Dispatchers.Main) {
+                                isProcessingLocation = false
+                                Toast.makeText(context, "GPS signal unavailable. Check device location rules.", Toast.LENGTH_LONG).show()
+                            }
                         }
                     } else {
                         withContext(Dispatchers.Main) {
                             isProcessingLocation = false
-                            Toast.makeText(context, "GPS signal unavailable. Check device location rules.", Toast.LENGTH_LONG).show()
+                            Toast.makeText(context, "Location permission rejected. Standalone watermark failed.", Toast.LENGTH_LONG).show()
                         }
                     }
                 }
@@ -218,7 +229,6 @@ fun AddPondScreen(
                     colors = textFieldColors
                 )
 
-                // FIXED: Removed the stray metadata reference tag cleanly here!
                 OutlinedTextField(
                     value = fishType,
                     onValueChange = { fishType = it },
