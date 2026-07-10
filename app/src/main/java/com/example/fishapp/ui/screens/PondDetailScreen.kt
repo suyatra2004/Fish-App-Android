@@ -59,10 +59,13 @@ fun PondDetailScreen(
     val backendHostAddress = "192.168.0.176:8000"
 
     // Set up secure Coil picture loader intersecting explicit binary stream target routes
+    val rawToken = com.example.fishapp.api.RetrofitClient.getAuthToken() ?: ""
+    val authHeaderValue = if (rawToken.startsWith("Bearer ", ignoreCase = true)) rawToken else "Bearer $rawToken"
+
     val pondImagePainter = rememberAsyncImagePainter(
         model = ImageRequest.Builder(context)
             .data(if (pond != null) "http://$backendHostAddress/ponds/${pond.id}/image" else "")
-            .addHeader("Authorization", com.example.fishapp.api.RetrofitClient.getAuthToken() ?: "")
+            .addHeader("Authorization", authHeaderValue) // Standardized token authentication wrapper string
             .crossfade(true)
             .build()
     )
@@ -181,7 +184,6 @@ fun PondDetailScreen(
                         // --- 4. BIOLOGICAL ECOSYSTEM TRACKER ---
                         Text("Cultivated Stock Profile", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
 
-                        // FIXED: Safely read the species list directly since it's already an array/list type
                         val speciesList = pond.fish_species ?: emptyList()
 
                         Column(
