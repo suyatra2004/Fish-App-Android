@@ -13,21 +13,20 @@ import com.example.fishapp.viewmodel.FishViewModel
 sealed class Screen(val route: String) {
     object LoginSelection        : Screen("login_selection")
     object ConsumerHome          : Screen("consumer_home")
-    object RoleSelection         : Screen("role_selection") // Kept in definitions to avoid compilation breaks elsewhere
+    object RoleSelection         : Screen("role_selection")
     object FarmerHub             : Screen("farmer_hub")
     object FarmerDashboard       : Screen("farmer_dashboard")
     object CameraScanner         : Screen("camera_scanner")
     object DiseaseReport         : Screen("disease_report")
-    object AddPond               : Screen("add_pond")
+    object AddPond               : Screen("add_pond") // Binds to "add_pond"
     object AdminDashboard        : Screen("admin_dashboard")
-    object PredictionDetail      : Screen("prediction_detail_screen") // Definition for the detail report screen
-    object PredictionHistoryList : Screen("prediction_history_list") // Definition for the full history view screen
+    object PredictionDetail      : Screen("prediction_detail_screen")
+    object PredictionHistoryList : Screen("prediction_history_list")
 }
 
 @Composable
 fun AquaSenseNavGraph(
     navController: NavHostController = rememberNavController(),
-    // Instantiate a single shared instance of the ViewModel for the entire graph
     viewModel: FishViewModel = viewModel()
 ) {
     NavHost(
@@ -43,7 +42,6 @@ fun AquaSenseNavGraph(
                         popUpTo(Screen.LoginSelection.route) { inclusive = true }
                     }
                 },
-                // FIXED: Accepts the specific role string directly from the screen state to handle direct bypass routing
                 onFarmerAdminLoginSuccess = { selectedRole ->
                     val targetRoute = if (selectedRole.equals("Admin", ignoreCase = true)) {
                         Screen.AdminDashboard.route
@@ -52,29 +50,29 @@ fun AquaSenseNavGraph(
                     }
 
                     navController.navigate(targetRoute) {
-                        popUpTo(Screen.LoginSelection.route) { inclusive = true } // Wipes login page from backstack memory safely
+                        popUpTo(Screen.LoginSelection.route) { inclusive = true }
                     }
                 }
             )
         }
 
-        // 2. Consumer Fish Scanner Home (Passes shared state instance for image uploads)
+        // 2. Consumer Fish Scanner Home
         composable(Screen.ConsumerHome.route) {
             ConsumerHomeScreen(
                 navController = navController,
                 viewModel = viewModel,
                 onBack = {
-                    viewModel.logoutUser() // Clear token session on back exit
+                    viewModel.logoutUser()
                     navController.popBackStack()
                 }
             )
         }
 
-        // 3. Farmer/Admin Role Selection (Bypassed but kept to prevent any structural breaks)
+        // 3. Farmer/Admin Role Selection
         composable(Screen.RoleSelection.route) {
             RoleSelectionScreen(
                 onBack = {
-                    viewModel.logoutUser() // Clear token session on back exit
+                    viewModel.logoutUser()
                     navController.popBackStack()
                 },
                 onFarmerClick = { navController.navigate(Screen.FarmerHub.route) },
@@ -97,7 +95,7 @@ fun AquaSenseNavGraph(
         composable(Screen.FarmerDashboard.route) {
             FarmerDashboard(
                 navController = navController,
-                viewModel = viewModel, // Passed seamlessly to link live pond states
+                viewModel = viewModel,
                 onBack = { navController.popBackStack() }
             )
         }
@@ -110,11 +108,11 @@ fun AquaSenseNavGraph(
             )
         }
 
-        // 7. Add New Pond Form
-        composable("add_pond_screen") { // Or whatever your route string name is
+        // 7. Add New Pond Form (FIXED: Linked explicitly to Screen.AddPond.route definition)
+        composable(Screen.AddPond.route) {
             AddPondScreen(
                 onBack = { navController.popBackStack() },
-                viewModel = viewModel // <-- ADD THIS LINE HERE
+                viewModel = viewModel
             )
         }
 
@@ -127,12 +125,12 @@ fun AquaSenseNavGraph(
             )
         }
 
-        // 9. Shared Camera Scanner (FIXED: Integrated callback to pass photo URIs into your architecture state machine)
+        // 9. Shared Camera Scanner
         composable(Screen.CameraScanner.route) {
             CameraScannerScreen(
                 onClose = { navController.popBackStack() },
                 onImageCaptured = { capturedUri ->
-                    viewModel.onImageSelected(capturedUri) // Binds captured media to home state variables
+                    viewModel.onImageSelected(capturedUri)
                 }
             )
         }
