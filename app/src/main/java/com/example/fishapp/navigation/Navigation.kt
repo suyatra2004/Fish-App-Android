@@ -18,10 +18,13 @@ sealed class Screen(val route: String) {
     object FarmerDashboard       : Screen("farmer_dashboard")
     object CameraScanner         : Screen("camera_scanner")
     object DiseaseReport         : Screen("disease_report")
-    object AddPond               : Screen("add_pond") // Binds to "add_pond"
+    object AddPond               : Screen("add_pond")
     object AdminDashboard        : Screen("admin_dashboard")
     object PredictionDetail      : Screen("prediction_detail_screen")
     object PredictionHistoryList : Screen("prediction_history_list")
+
+    // ADDED: Route targeting individual clicked pond details view
+    object PondDetail            : Screen("pond_detail_screen")
 }
 
 @Composable
@@ -108,7 +111,7 @@ fun AquaSenseNavGraph(
             )
         }
 
-        // 7. Add New Pond Form (FIXED: Linked explicitly to Screen.AddPond.route definition)
+        // 7. Add New Pond Form
         composable(Screen.AddPond.route) {
             AddPondScreen(
                 onBack = { navController.popBackStack() },
@@ -116,7 +119,16 @@ fun AquaSenseNavGraph(
             )
         }
 
-        // 8. Admin/Expert Control Center
+        // 8. ADDED: Clickable Pond Detail Inspection Sub-View
+        composable(Screen.PondDetail.route) {
+            PondDetailScreen(
+                navController = navController,
+                viewModel = viewModel,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        // 9. Admin/Expert Control Center
         composable(Screen.AdminDashboard.route) {
             AdminDashboard(
                 navController = navController,
@@ -125,7 +137,7 @@ fun AquaSenseNavGraph(
             )
         }
 
-        // 9. Shared Camera Scanner
+        // 10. Shared Camera Scanner
         composable(Screen.CameraScanner.route) {
             CameraScannerScreen(
                 onClose = { navController.popBackStack() },
@@ -135,7 +147,7 @@ fun AquaSenseNavGraph(
             )
         }
 
-        // 10. Detailed Scan Inspection Report Screen
+        // 11. Detailed Scan Inspection Report Screen
         composable(Screen.PredictionDetail.route) {
             PredictionDetailScreen(
                 navController = navController,
@@ -143,7 +155,7 @@ fun AquaSenseNavGraph(
             )
         }
 
-        // 11. Complete History Log View Screen
+        // 12. Complete History Log View Screen
         composable(Screen.PredictionHistoryList.route) {
             PredictionHistoryListScreen(
                 navController = navController,

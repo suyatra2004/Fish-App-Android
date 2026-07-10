@@ -60,6 +60,9 @@ fun AddPondScreen(
     var latitude by remember { mutableStateOf<Double?>(null) }
     var longitude by remember { mutableStateOf<Double?>(null) }
 
+    // NEW UTILITY STATE: Handles network loading indicator overlays
+    var isRegisteringPond by remember { mutableStateOf(false) }
+
     val textFieldColors = OutlinedTextFieldDefaults.colors(
         focusedTextColor = TextPrimary,
         unfocusedTextColor = TextPrimary,
@@ -76,7 +79,6 @@ fun AddPondScreen(
             if (uri != null) {
                 isProcessingLocation = true
                 scope.launch(Dispatchers.IO) {
-                    // CRASH FIX: Ensure runtime explicit checks protect the asynchronous background thread invocation
                     val hasFineLocation = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
                     val hasCoarseLocation = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
@@ -156,7 +158,7 @@ fun AddPondScreen(
                         .height(180.dp)
                         .background(Color.White, RoundedCornerShape(12.dp))
                         .clip(RoundedCornerShape(12.dp))
-                        .clickable {
+                        .clickable(enabled = !isRegisteringPond) { // Disable changes during network calls
                             val fineLoc = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
                             val coarseLoc = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION)
                             if (fineLoc == PackageManager.PERMISSION_GRANTED || coarseLoc == PackageManager.PERMISSION_GRANTED) {
@@ -217,7 +219,8 @@ fun AddPondScreen(
                     onValueChange = { pondName = it },
                     label = { Text("Pond Name (e.g. North Wing A)") },
                     modifier = Modifier.fillMaxWidth(),
-                    colors = textFieldColors
+                    colors = textFieldColors,
+                    enabled = !isRegisteringPond
                 )
 
                 OutlinedTextField(
@@ -226,7 +229,8 @@ fun AddPondScreen(
                     label = { Text("Total Area (numeric sq ft value)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
-                    colors = textFieldColors
+                    colors = textFieldColors,
+                    enabled = !isRegisteringPond
                 )
 
                 OutlinedTextField(
@@ -234,12 +238,13 @@ fun AddPondScreen(
                     onValueChange = { fishType = it },
                     label = { Text("Primary Fish Species (e.g. Rohu, Catla)") },
                     modifier = Modifier.fillMaxWidth(),
-                    colors = textFieldColors
+                    colors = textFieldColors,
+                    enabled = !isRegisteringPond
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // --- PIPELINE COMPLIANT UPLOAD SUBMIT BUTTON ---
+                // --- PIPELINE COMPLIANT UPLOAD SUBMIT BUTTON (WITH LOADING VISUALS) ---
                 Button(
                     onClick = {
                         val areaValue = area.toDoubleOrNull()
@@ -248,6 +253,9 @@ fun AddPondScreen(
                         if (pondName.isBlank() || areaValue == null || speciesList.isEmpty() || watermarkedImageUri == null || latitude == null || longitude == null) {
                             Toast.makeText(context, "Please provide complete details and select a valid image.", Toast.LENGTH_LONG).show()
                         } else {
+                            // Turn loading animations ON
+                            isRegisteringPond = true
+
                             viewModel.uploadNewPond(
                                 context = context,
                                 name = pondName,
@@ -257,6 +265,7 @@ fun AddPondScreen(
                                 speciesList = speciesList,
                                 imageUri = watermarkedImageUri!!,
                                 onSuccess = {
+                                    isRegisteringPond = false
                                     isSuccess = true
                                 }
                             )
@@ -267,9 +276,24 @@ fun AddPondScreen(
                         .height(56.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = BrandGreen),
                     shape = MaterialTheme.shapes.medium,
-                    enabled = pondName.isNotEmpty() && area.isNotEmpty() && fishType.isNotEmpty() && watermarkedImageUri != null
+                    enabled = pondName.isNotEmpty() && area.isNotEmpty() && fishType.isNotEmpty() && watermarkedImageUri != null && !isRegisteringPond
                 ) {
-                    Text("Register Pond", style = MaterialTheme.typography.titleMedium)
+                    if (isRegisteringPond) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = Color.White,
+                                strokeWidth = 2.5.dp
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text("Registering Pond, please wait...", style = MaterialTheme.typography.titleMedium.copy(color = Color.White))
+                        }
+                    } else {
+                        Text("Register Pond", style = MaterialTheme.typography.titleMedium)
+                    }
                 }
             }
         }

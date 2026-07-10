@@ -3,7 +3,9 @@ package com.example.fishapp.viewmodel
 import android.content.Context
 import android.net.Uri
 import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fishapp.api.*
@@ -58,6 +60,14 @@ class FishViewModel : ViewModel() {
     private val _pondsErrorMessage = mutableStateOf<String?>(null)
     val pondsErrorMessage: State<String?> = _pondsErrorMessage
 
+    // ADDED FOR TASK 2: Tracks the active clicked pond context for the details layout screen
+    private val _selectedPond = mutableStateOf<PondResponse?>(null)
+    val selectedPond: PondResponse? get() = _selectedPond.value
+
+    fun setSelectedPond(pond: PondResponse?) {
+        _selectedPond.value = pond
+    }
+
     // ==========================================
     // STEP 4: ADMIN / EXPERT REPORT STATES
     // ==========================================
@@ -110,15 +120,14 @@ class FishViewModel : ViewModel() {
         viewModelScope.launch {
             _uiState.value = PredictionUiState.Loading
             try {
-                // The updated RetrofitClient automatically attaches the token interceptor!
                 val response = RetrofitClient.instance.getPrediction(imagePart, "")
                 if (response.isSuccessful && response.body() != null) {
                     _uiState.value = PredictionUiState.Success(response.body()!!)
-                    fetchPredictionHistory() // Refresh the user's history list instantly after making a new scan!
+                    fetchPredictionHistory()
                 } else {
                     if (response.code() == 401) {
                         _uiState.value = PredictionUiState.Error("Session expired. Please log in again.")
-                        logoutUser() // Force drop session if server rejects due to invalid token
+                        logoutUser()
                     } else {
                         _uiState.value = PredictionUiState.Error("Server error: ${response.code()}")
                     }
@@ -132,10 +141,6 @@ class FishViewModel : ViewModel() {
     // ==========================================
     // NEW FEATURE OPERATIONS (Authentication)
     // ==========================================
-
-    /**
-     * Authenticates credentials with the backend and handles token handshakes
-     */
     fun loginUser(username: String, password: String) {
         viewModelScope.launch {
             _authUriState.value = AuthUiState.Loading
@@ -143,10 +148,7 @@ class FishViewModel : ViewModel() {
                 val response = RetrofitClient.instance.login(LoginRequest(username, password))
                 if (response.isSuccessful && response.body() != null) {
                     val token = response.body()!!.access_token
-
-                    // Update our interceptor so all future calls attach this token
                     RetrofitClient.setAuthToken(token)
-
                     _authUriState.value = AuthUiState.Authenticated
                 } else {
                     _authUriState.value = AuthUiState.Error("Login failed: Invalid credentials")
@@ -160,10 +162,6 @@ class FishViewModel : ViewModel() {
     // ==========================================
     // EXTENDED REGISTRATION PIPELINES (API Integrated)
     // ==========================================
-
-    /**
-     * Executes a network transaction to create a consumer profile in the backend database
-     */
     fun registerConsumerAccount(username: String, password: String, fullName: String, phone: String) {
         viewModelScope.launch {
             _authUriState.value = AuthUiState.Loading
@@ -176,7 +174,6 @@ class FishViewModel : ViewModel() {
                 )
                 val response = RetrofitClient.instance.registerConsumer(payload)
                 if (response.isSuccessful) {
-                    // Auto-login immediately following a successful registration profile creation
                     loginUser(username, password)
                 } else {
                     _authUriState.value = AuthUiState.Error("Registration rejected: Account already exists.")
@@ -187,9 +184,6 @@ class FishViewModel : ViewModel() {
         }
     }
 
-    /**
-     * Routes management profile creation to either the farmer or admin endpoint depending on the selected role
-     */
     fun registerManagementAccount(username: String, password: String, fullName: String, phone: String, role: String) {
         viewModelScope.launch {
             _authUriState.value = AuthUiState.Loading
@@ -198,10 +192,9 @@ class FishViewModel : ViewModel() {
                     username = username,
                     password = password,
                     full_name = fullName.ifBlank { null },
-                    phone_number = phone.ifBlank { "0000000000" } // Fallback as phone number is required for managers
+                    phone_number = phone.ifBlank { "0000000000" }
                 )
 
-                // Select matching endpoint execution route cleanly
                 val response = if (role.equals("Farmer", ignoreCase = true)) {
                     RetrofitClient.instance.registerFarmer(payload)
                 } else {
@@ -209,7 +202,6 @@ class FishViewModel : ViewModel() {
                 }
 
                 if (response.isSuccessful) {
-                    // Auto-login immediately following a successful registration profile creation
                     loginUser(username, password)
                 } else {
                     _authUriState.value = AuthUiState.Error("Registration failed: Role criteria not met.")
@@ -223,10 +215,6 @@ class FishViewModel : ViewModel() {
     // ==========================================
     // STEP 3 FEATURE OPERATIONS (Farmer Pond API Tracker)
     // ==========================================
-
-    /**
-     * Queries your friend's backend database endpoints to retrieve the farmer's active assets list
-     */
     fun fetchFarmerPonds() {
         viewModelScope.launch {
             _isPondsLoading.value = true
@@ -254,10 +242,6 @@ class FishViewModel : ViewModel() {
     // ==========================================
     // STEP 4 FEATURE OPERATIONS (Admin Outbreak Streamer)
     // ==========================================
-
-    /**
-     * Queries your friend's global endpoint to gather all submitted farm risk assessments
-     */
     fun fetchAllReports() {
         viewModelScope.launch {
             _isReportsLoading.value = true
@@ -285,10 +269,6 @@ class FishViewModel : ViewModel() {
     // ==========================================
     // NEW CONSUMER OPERATIONS (Prediction History Handshaking)
     // ==========================================
-
-    /**
-     * API Endpoint 3 Implementation: Queries background server for historical user scans
-     */
     fun fetchPredictionHistory() {
         viewModelScope.launch {
             _isHistoryLoading.value = true
@@ -313,9 +293,6 @@ class FishViewModel : ViewModel() {
         }
     }
 
-    /**
-     * API Endpoint 4 Implementation: Fetches a single scan's unredacted property metrics
-     */
     fun fetchPredictionDetail(predictionId: Int, onSuccess: () -> Unit) {
         viewModelScope.launch {
             _isDetailLoading.value = true
@@ -323,7 +300,7 @@ class FishViewModel : ViewModel() {
                 val response = RetrofitClient.instance.getPredictionDetail(predictionId, "")
                 if (response.isSuccessful && response.body() != null) {
                     _currentDetailItem.value = response.body()!!
-                    onSuccess() // Execute layout scene transition callback seamlessly
+                    onSuccess()
                 }
             } catch (e: Exception) {
                 // Background debugging streams go here
@@ -336,26 +313,20 @@ class FishViewModel : ViewModel() {
     // ==========================================
     // CLOSURE OPERATIONS
     // ==========================================
-
-    /**
-     * Clears current active user sessions out of memory gracefully
-     */
     fun logoutUser() {
         _authUriState.value = AuthUiState.Unauthenticated
         _pondsList.value = emptyList()
-        _reportsList.value = emptyList() // Clean up expert records cache
-        _historyList.value = emptyList() // Purge user scanning profile tracking history cleanly
-        _currentDetailItem.value = null  // Destroy active detail inspections context
+        _reportsList.value = emptyList()
+        _historyList.value = emptyList()
+        _currentDetailItem.value = null
+        _selectedPond.value = null // Purge the active selected pond model cache cleanly
         resetState()
         RetrofitClient.clearAuthToken()
     }
 
-    /**
-     * Packages multi-part properties and coordinates for storage via Endpoint 3
-     */
-    /**
-     * Packages multi-part properties and coordinates for storage via Endpoint 3
-     */
+    // ==========================================
+    // POND UPLOAD PIPELINE
+    // ==========================================
     fun uploadNewPond(
         context: Context,
         name: String,
@@ -392,7 +363,6 @@ class FishViewModel : ViewModel() {
 
                     if (response.isSuccessful) {
                         fetchFarmerPonds()
-                        // FIXED: Changed from launch to withContext to cleanly switch thread contexts
                         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                             onSuccess()
                         }

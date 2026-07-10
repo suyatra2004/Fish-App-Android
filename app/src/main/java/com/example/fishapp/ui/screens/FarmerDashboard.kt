@@ -2,6 +2,7 @@ package com.example.fishapp.ui.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -26,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
+import com.example.fishapp.api.PondResponse
 import com.example.fishapp.navigation.Screen
 import com.example.fishapp.ui.components.*
 import com.example.fishapp.ui.theme.*
@@ -37,12 +39,10 @@ fun FarmerDashboard(
     onBack: () -> Unit,
     viewModel: FishViewModel
 ) {
-    // FIXED: Uses your exact existing ViewModel fetch function signature
     LaunchedEffect(Unit) {
         viewModel.fetchFarmerPonds()
     }
 
-    // FIXED: Uses your exact existing ViewModel state observations
     val pondsList by viewModel.pondsList
     val isPondsLoading by viewModel.isPondsLoading
 
@@ -69,7 +69,6 @@ fun FarmerDashboard(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Reusable Header with manual sync action button
             Box(modifier = Modifier.fillMaxWidth()) {
                 AquaTopBar(
                     title = "My Ponds",
@@ -87,7 +86,6 @@ fun FarmerDashboard(
                 }
             }
 
-            // DYNAMIC LAYOUT HANDLING BASED ON API RESPONSE STATES
             if (isPondsLoading) {
                 Box(
                     modifier = Modifier.fillMaxSize().weight(1f),
@@ -124,16 +122,15 @@ fun FarmerDashboard(
                             }
                         }
                     } else {
-                        // Iterates smoothly over live database items
+                        // Pass down the entire pond instance object along with navigation handlers cleanly
                         items(pondsList) { pond ->
                             PondCard(
-                                name = pond.name,
-                                latitude = pond.latitude ?: 0.0,
-                                longitude = pond.longitude ?: 0.0,
-                                estimatedArea = pond.estimated_area ?: 0.0,
-                                verified = pond.verified,
-                                pondId = pond.id,
-                                backendHost = backendHostAddress
+                                pond = pond,
+                                backendHost = backendHostAddress,
+                                onClick = {
+                                    viewModel.setSelectedPond(pond)
+                                    navController.navigate(Screen.PondDetail.route)
+                                }
                             )
                         }
                     }
@@ -145,36 +142,33 @@ fun FarmerDashboard(
 
 @Composable
 fun PondCard(
-    name: String,
-    latitude: Double,
-    longitude: Double,
-    estimatedArea: Double,
-    verified: Boolean,
-    pondId: Int,
-    backendHost: String
+    pond: PondResponse,
+    backendHost: String,
+    onClick: () -> Unit
 ) {
     val context = LocalContext.current
 
-    // Set up secure Coil picture loader intersecting Endpoint 6 binary streams[cite: 1]
     val pondImagePainter = rememberAsyncImagePainter(
         model = ImageRequest.Builder(context)
-            .data("http://$backendHost/ponds/$pondId/image") // Fetches explicit binary stream target routes[cite: 1]
+            .data("http://$backendHost/ponds/${pond.id}/image")
             .addHeader("Authorization", com.example.fishapp.api.RetrofitClient.getAuthToken() ?: "")
             .crossfade(true)
             .build()
     )
 
-    AquaCard {
+    // FIXED: Tying clickable target interaction hooks into your reusable baseline UI layout wrapper
+    AquaCard(
+        modifier = Modifier.clickable { onClick() }
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Geo-tagged image container space[cite: 1]
             Box(
                 modifier = Modifier
                     .size(64.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(Color(0xFFE2E8F0)), // Fallback Slate-Gray placeholder background
+                    .background(Color(0xFFE2E8F0)),
                 contentAlignment = Alignment.Center
             ) {
                 Image(
@@ -187,11 +181,10 @@ fun PondCard(
 
             Spacer(Modifier.width(16.dp))
 
-            // Metadata data processing tags column[cite: 1]
             Column(modifier = Modifier.weight(1f)) {
-                Text(name, fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 16.sp)
+                Text(pond.name, fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 16.sp)
                 Text(
-                    text = "Area: ${String.format("%.1f", estimatedArea)} sq ft",
+                    text = "Area: ${String.format("%.1f", pond.estimated_area ?: 0.0)} sq ft",
                     fontSize = 12.sp,
                     color = TextSecondary
                 )
@@ -208,7 +201,7 @@ fun PondCard(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "${String.format("%.4f", latitude)}, ${String.format("%.4f", longitude)}",
+                        text = "${String.format("%.4f", pond.latitude ?: 0.0)}, ${String.format("%.4f", pond.longitude ?: 0.0)}",
                         fontSize = 11.sp,
                         color = BrandGreen,
                         fontWeight = FontWeight.Medium
@@ -218,14 +211,13 @@ fun PondCard(
 
             Spacer(Modifier.width(8.dp))
 
-            // Dynamic Compliance Audit verification badge system[cite: 1]
-            val badgeColor = if (verified) BrandGreen else Color.Gray
+            val badgeColor = if (pond.verified) BrandGreen else Color.Gray
             Surface(
                 shape = RoundedCornerShape(20.dp),
                 color = badgeColor.copy(alpha = 0.1f)
             ) {
                 Text(
-                    text = if (verified) "VERIFIED" else "PENDING",
+                    text = if (pond.verified) "VERIFIED" else "PENDING",
                     color = badgeColor,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
