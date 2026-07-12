@@ -74,9 +74,9 @@ fun AdminDashboard(
                 actions = {
                     IconButton(onClick = {
                         viewModel.logoutUser()
-                        // FIXED: Wipes backstack history and safely targets the authentication screen
+                        // FIXED: Clears history back to the landing screen route cleanly instead of crashing/exiting out
                         navController.navigate("login") {
-                            popUpTo(0) { inclusive = true }
+                            popUpTo("login") { inclusive = true }
                         }
                     }) {
                         Icon(Icons.Default.Logout, contentDescription = "Logout", tint = Color.White)
@@ -180,7 +180,7 @@ fun AdminDashboard(
 
 @Composable
 fun AdminPondCard(
-    pond: AdminPondResponse,
+    pond: AdminPondResponse, //[cite: 1]
     onClick: () -> Unit,
     onApprove: () -> Unit,
     onReject: () -> Unit
@@ -191,17 +191,17 @@ fun AdminPondCard(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(pond.name, fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 16.sp)
-                    Text("Owner: ${pond.owner_username}", color = TextSecondary, fontSize = 13.sp)
-                    Text("Area: ${pond.estimated_area ?: 0.0} sq ft", color = TextSecondary, fontSize = 13.sp)
+                    Text("Owner: ${pond.owner_username}", color = TextSecondary, fontSize = 13.sp) //[cite: 1]
+                    Text("Area: ${pond.estimated_area ?: 0.0} sq ft", color = TextSecondary, fontSize = 13.sp) //[cite: 1]
                 }
 
                 Surface(
                     shape = RoundedCornerShape(20.dp),
-                    color = (if (pond.verified) BrandGreen else Color.Red).copy(alpha = 0.1f)
+                    color = (if (pond.verified) BrandGreen else Color.Red).copy(alpha = 0.1f) //[cite: 1]
                 ) {
                     Text(
-                        text = if (pond.verified) "VERIFIED" else "PENDING",
-                        color = if (pond.verified) BrandGreen else Color.Red,
+                        text = if (pond.verified) "VERIFIED" else "PENDING", //[cite: 1]
+                        color = if (pond.verified) BrandGreen else Color.Red, //[cite: 1]
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
@@ -218,7 +218,7 @@ fun AdminPondCard(
             ) {
                 Row(
                     modifier = Modifier.clickable {
-                        pond.owner_phone?.let { phone ->
+                        pond.owner_phone?.let { phone -> //[cite: 1]
                             val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))
                             context.startActivity(intent)
                         }
@@ -227,11 +227,11 @@ fun AdminPondCard(
                 ) {
                     Icon(Icons.Default.Call, contentDescription = null, tint = BrandGreen, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text(pond.owner_phone ?: "No Phone", color = BrandGreen, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                    Text(pond.owner_phone ?: "No Phone", color = BrandGreen, fontSize = 13.sp, fontWeight = FontWeight.Medium) //[cite: 1]
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (!pond.verified) {
+                    if (!pond.verified) { //[cite: 1]
                         Button(onClick = onApprove, colors = ButtonDefaults.buttonColors(containerColor = BrandGreen), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)) {
                             Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
@@ -252,7 +252,7 @@ fun AdminPondCard(
 
 @Composable
 fun AdminReportCard(
-    report: AdminReportResponse,
+    report: AdminReportResponse, //[cite: 1]
     onClick: () -> Unit,
     onApprove: () -> Unit,
     onReject: () -> Unit
@@ -262,18 +262,18 @@ fun AdminReportCard(
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(report.report_name, fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 16.sp)
-                    Text("Pond Context: ${report.pond_name}", color = TextSecondary, fontSize = 13.sp)
-                    Text("Symptoms: ${report.symptoms}", color = Color.DarkGray, fontSize = 13.sp, maxLines = 2)
+                    Text(report.report_name, fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 16.sp) //[cite: 1]
+                    Text("Pond Context: ${report.pond_name}", color = TextSecondary, fontSize = 13.sp) //[cite: 1]
+                    Text("Symptoms: ${report.symptoms}", color = Color.DarkGray, fontSize = 13.sp, maxLines = 2) //[cite: 1]
                 }
 
                 Surface(
                     shape = RoundedCornerShape(20.dp),
-                    color = (if (report.verified) BrandGreen else Color.Red).copy(alpha = 0.1f)
+                    color = (if (report.verified) BrandGreen else Color.Red).copy(alpha = 0.1f) //[cite: 1]
                 ) {
                     Text(
-                        text = if (report.verified) "RESOLVED" else "PENDING",
-                        color = if (report.verified) BrandGreen else Color.Red,
+                        text = if (report.verified) "RESOLVED" else "PENDING", //[cite: 1]
+                        color = if (report.verified) BrandGreen else Color.Red, //[cite: 1]
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
@@ -290,7 +290,7 @@ fun AdminReportCard(
             ) {
                 Row(
                     modifier = Modifier.clickable {
-                        report.farmer_phone?.let { phone ->
+                        report.farmer_phone?.let { phone -> //[cite: 1]
                             val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))
                             context.startActivity(intent)
                         }
@@ -299,11 +299,11 @@ fun AdminReportCard(
                 ) {
                     Icon(Icons.Default.Call, contentDescription = null, tint = BrandGreen, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text(report.farmer_phone ?: "No Phone", color = BrandGreen, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                    Text(report.farmer_phone ?: "No Phone", color = BrandGreen, fontSize = 13.sp, fontWeight = FontWeight.Medium) //[cite: 1]
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (!report.verified) {
+                    if (!report.verified) { //[cite: 1]
                         Button(onClick = onApprove, colors = ButtonDefaults.buttonColors(containerColor = BrandGreen), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)) {
                             Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
@@ -327,17 +327,18 @@ fun AdminReportCard(
 // ==========================================
 
 @Composable
-fun AdminPondDetailDialog(pond: AdminPondResponse, onDismiss: () -> Unit) {
+fun AdminPondDetailDialog(pond: AdminPondResponse, onDismiss: () -> Unit) { //[cite: 1]
     val context = LocalContext.current
     val backendHostAddress = "192.168.0.176:8000"
     val rawToken = com.example.fishapp.api.RetrofitClient.getAuthToken() ?: ""
     val authHeaderValue = if (rawToken.startsWith("Bearer ", ignoreCase = true)) rawToken else "Bearer $rawToken"
 
+    // FIXED: Correctly extracts absolute image paths built from database responses[cite: 1]
+    val imagePath = pond.image_url ?: "" //[cite: 1]
     val imageUrl = when {
-        pond.image_url.isNullOrBlank() -> ""
-        pond.image_url.startsWith("http") -> pond.image_url
-        pond.image_url.startsWith("/") -> "http://$backendHostAddress${pond.image_url}"
-        else -> "http://$backendHostAddress/admin/ponds/${pond.id}/image"
+        imagePath.startsWith("http://") || imagePath.startsWith("https://") -> imagePath
+        imagePath.startsWith("/") -> "http://$backendHostAddress$imagePath"
+        else -> "http://$backendHostAddress/$imagePath"
     }
 
     val painter = rememberAsyncImagePainter(
@@ -355,7 +356,7 @@ fun AdminPondDetailDialog(pond: AdminPondResponse, onDismiss: () -> Unit) {
                 Text("Close Layout")
             }
         },
-        title = { Text(pond.name, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextPrimary) },
+        title = { Text(pond.name, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextPrimary) }, //[cite: 1]
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Box(
@@ -372,11 +373,11 @@ fun AdminPondDetailDialog(pond: AdminPondResponse, onDismiss: () -> Unit) {
                         contentScale = ContentScale.Crop
                     )
                 }
-                Text("• Owner Username: ${pond.owner_username}", fontSize = 13.sp, color = Color.Black)
-                Text("• Total Asset Area: ${pond.estimated_area ?: 0.0} sq ft", fontSize = 13.sp, color = Color.Black)
-                Text("• Species Cultured: ${pond.fish_species.joinToString(", ")}", fontSize = 13.sp, color = Color.Black)
-                Text("• GPS Coordinates: Lat ${pond.latitude ?: 0.0} / Lng ${pond.longitude ?: 0.0}", fontSize = 13.sp, color = Color.Black)
-                Text("• Log Timestamp: ${pond.created_at.take(19).replace("T", " ")}", fontSize = 12.sp, color = Color.Gray)
+                Text("• Owner Username: ${pond.owner_username}", fontSize = 13.sp, color = Color.Black) //[cite: 1]
+                Text("• Total Asset Area: ${pond.estimated_area ?: 0.0} sq ft", fontSize = 13.sp, color = Color.Black) //[cite: 1]
+                Text("• Species Cultured: ${pond.fish_species.joinToString(", ")}", fontSize = 13.sp, color = Color.Black) //[cite: 1]
+                Text("• GPS Coordinates: Lat ${pond.latitude ?: 0.0} / Lng ${pond.longitude ?: 0.0}", fontSize = 13.sp, color = Color.Black) //[cite: 1]
+                Text("• Log Timestamp: ${pond.created_at.take(19).replace("T", " ")}", fontSize = 12.sp, color = Color.Gray) //[cite: 1]
             }
         },
         containerColor = Color.White,
@@ -385,16 +386,18 @@ fun AdminPondDetailDialog(pond: AdminPondResponse, onDismiss: () -> Unit) {
 }
 
 @Composable
-fun AdminReportDetailDialog(report: AdminReportResponse, onDismiss: () -> Unit) {
+fun AdminReportDetailDialog(report: AdminReportResponse, onDismiss: () -> Unit) { //[cite: 1]
     val context = LocalContext.current
     val backendHostAddress = "192.168.0.176:8000"
     val rawToken = com.example.fishapp.api.RetrofitClient.getAuthToken() ?: ""
     val authHeaderValue = if (rawToken.startsWith("Bearer ", ignoreCase = true)) rawToken else "Bearer $rawToken"
 
+    // FIXED: Correctly extracts absolute photo paths built from database responses[cite: 1]
+    val photoPath = report.photo_url //[cite: 1]
     val imageUrl = when {
-        report.photo_url.startsWith("http") -> report.photo_url
-        report.photo_url.startsWith("/") -> "http://$backendHostAddress${report.photo_url}"
-        else -> "http://$backendHostAddress/admin/reports/${report.id}/photo"
+        photoPath.startsWith("http://") || photoPath.startsWith("https://") -> photoPath
+        photoPath.startsWith("/") -> "http://$backendHostAddress$photoPath"
+        else -> "http://$backendHostAddress/$photoPath"
     }
 
     val painter = rememberAsyncImagePainter(
@@ -412,7 +415,7 @@ fun AdminReportDetailDialog(report: AdminReportResponse, onDismiss: () -> Unit) 
                 Text("Dismiss View")
             }
         },
-        title = { Text(report.report_name, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextPrimary) },
+        title = { Text(report.report_name, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextPrimary) }, //[cite: 1]
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Box(
@@ -429,11 +432,11 @@ fun AdminReportDetailDialog(report: AdminReportResponse, onDismiss: () -> Unit) 
                         contentScale = ContentScale.Crop
                     )
                 }
-                Text("• Farmer Account: ${report.farmer_username}", fontSize = 13.sp, color = Color.Black)
-                Text("• Target Pond Body: ${report.pond_name} (ID: #${report.pond_id})", fontSize = 13.sp, color = Color.Black)
+                Text("• Farmer Account: ${report.farmer_username}", fontSize = 13.sp, color = Color.Black) //[cite: 1]
+                Text("• Target Pond Body: ${report.pond_name} (ID: #${report.pond_id})", fontSize = 13.sp, color = Color.Black) //[cite: 1]
                 Text("• Reported Symptoms:", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.Black)
-                Text(report.symptoms, fontSize = 13.sp, color = Color.DarkGray, lineHeight = 18.sp)
-                Text("• Incident Date: ${report.created_at.take(19).replace("T", " ")}", fontSize = 12.sp, color = Color.Gray)
+                Text(report.symptoms, fontSize = 13.sp, color = Color.DarkGray, lineHeight = 18.sp) //[cite: 1]
+                Text("• Incident Date: ${report.created_at.take(19).replace("T", " ")}", fontSize = 12.sp, color = Color.Gray) //[cite: 1]
             }
         },
         containerColor = Color.White,
