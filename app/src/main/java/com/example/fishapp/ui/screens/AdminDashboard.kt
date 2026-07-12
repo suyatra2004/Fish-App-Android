@@ -3,6 +3,7 @@ package com.example.fishapp.ui.screens
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -54,6 +55,52 @@ fun AdminDashboard(
     var selectedPondDetail by remember { mutableStateOf<AdminPondResponse?>(null) }
     var selectedReportDetail by remember { mutableStateOf<AdminReportResponse?>(null) }
 
+    // FIXED: Dialog state control to toggle exit prompt visibility matching consumer flow
+    var showExitDialog by remember { mutableStateOf(false) }
+
+    // FIXED: Intercepts structural back keys or hardware swipe gestures
+    BackHandler(enabled = true) {
+        showExitDialog = true
+    }
+
+    // FIXED: High-contrast exit dialog matching Consumer HomeScreen specifications
+    if (showExitDialog) {
+        AlertDialog(
+            onDismissRequest = { showExitDialog = false },
+            title = {
+                Text(
+                    text = "Exit Application",
+                    color = Color.Black,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    text = "Are you sure you want to exit AquaSense?",
+                    color = Color.DarkGray
+                )
+            },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(14.dp),
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showExitDialog = false
+                        viewModel.logoutUser() // Clear session flags securely
+                        (context as? android.app.Activity)?.finishAffinity() // Safely exit app completely
+                    }
+                ) {
+                    Text("Yes", color = BrandGreen, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExitDialog = false }) {
+                    Text("No", color = Color.Gray)
+                }
+            }
+        )
+    }
+
     LaunchedEffect(selectedTab) {
         if (selectedTab == 0) {
             viewModel.fetchAllAdminPonds()
@@ -72,14 +119,8 @@ fun AdminDashboard(
                     }
                 },
                 actions = {
-                    IconButton(onClick = {
-                        viewModel.logoutUser()
-                        // FIXED: Safely navigates directly to the login path without popping the graph anchor line
-                        navController.navigate("login") {
-                            popUpTo("login") { inclusive = false }
-                            launchSingleTop = true
-                        }
-                    }) {
+                    // FIXED: Reassigned to prompt the confirmation dialog on click
+                    IconButton(onClick = { showExitDialog = true }) {
                         Icon(Icons.Default.Logout, contentDescription = "Logout", tint = Color.White)
                     }
                 },
@@ -335,7 +376,6 @@ fun AdminPondDetailDialog(pond: AdminPondResponse, onDismiss: () -> Unit) {
     val rawToken = com.example.fishapp.api.RetrofitClient.getAuthToken() ?: ""
     val authHeaderValue = if (rawToken.startsWith("Bearer ", ignoreCase = true)) rawToken else "Bearer $rawToken"
 
-    // FIXED: Maps clean paths directly against the local network address host
     val imagePath = pond.image_url ?: ""
     val imageUrl = when {
         imagePath.startsWith("http://") || imagePath.startsWith("https://") -> imagePath
@@ -395,7 +435,6 @@ fun AdminReportDetailDialog(report: AdminReportResponse, onDismiss: () -> Unit) 
     val rawToken = com.example.fishapp.api.RetrofitClient.getAuthToken() ?: ""
     val authHeaderValue = if (rawToken.startsWith("Bearer ", ignoreCase = true)) rawToken else "Bearer $rawToken"
 
-    // FIXED: Maps clean paths directly against the local network address host
     val photoPath = report.photo_url ?: ""
     val imageUrl = when {
         photoPath.startsWith("http://") || photoPath.startsWith("https://") -> photoPath

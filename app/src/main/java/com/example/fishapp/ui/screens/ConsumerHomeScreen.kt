@@ -56,7 +56,7 @@ fun ConsumerHomeScreen(
     val uiState by viewModel.uiState
     val selectedImageUri by viewModel.selectedImageUri
 
-    // FIXED: Real-time Prediction History States Hook
+    // Real-time Prediction History States Hook
     val historyList by viewModel.historyList
     val isHistoryLoading by viewModel.isHistoryLoading
 
@@ -78,17 +78,26 @@ fun ConsumerHomeScreen(
         AlertDialog(
             onDismissRequest = { showExitDialog = false },
             title = {
-                Text(text = "Exit Application", color = TextPrimary, fontWeight = FontWeight.Bold)
+                Text(
+                    text = "Exit Application",
+                    color = Color.Black, // FIXED: High-contrast visibility toggle
+                    fontWeight = FontWeight.Bold
+                )
             },
             text = {
-                Text(text = "Are you sure you want to exit AquaSense?", color = TextSecondary)
+                Text(
+                    text = "Are you sure you want to exit AquaSense?",
+                    color = Color.DarkGray // FIXED: Restores unreadable description text blocks
+                )
             },
+            containerColor = Color.White, // FIXED: Overrides theme collision bugs
+            shape = RoundedCornerShape(14.dp),
             confirmButton = {
                 TextButton(
                     onClick = {
                         showExitDialog = false
                         viewModel.logoutUser() // Clear active login session interceptors securely
-                        (context as? android.app.Activity)?.finishAffinity() // Force complete shutdown of background hardware task traces
+                        (context as? android.app.Activity)?.finishAffinity() // Force complete shutdown
                     }
                 ) {
                     Text("Yes", color = BrandGreen, fontWeight = FontWeight.Bold)
@@ -96,7 +105,7 @@ fun ConsumerHomeScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showExitDialog = false }) {
-                    Text("No", color = TextSecondary)
+                    Text("No", color = Color.Gray) // FIXED: Replaced hidden color state references
                 }
             }
         )
@@ -154,8 +163,10 @@ fun ConsumerHomeScreen(
                         // High-contrast Logout Action button linked to clean redirection
                         IconButton(onClick = {
                             viewModel.logoutUser() // Drops backend authorization tokens cleanly
+                            // FIXED: Explicitly redirects graph down to matching root selection route constants cleanly
                             navController.navigate(Screen.LoginSelection.route) {
-                                popUpTo(0) { inclusive = true } // Wipes total navigation backstack tracking memory
+                                popUpTo(Screen.LoginSelection.route) { inclusive = false }
+                                launchSingleTop = true
                             }
                         }, modifier = Modifier.offset(x = 12.dp)) {
                             Icon(Icons.Default.Logout, contentDescription = "Sign Out User", tint = Color.White)
@@ -239,7 +250,6 @@ fun ConsumerHomeScreen(
                         color = BrandGreen,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp,
-                        // FIXED: Routed modifier to open the complete prediction logs screen layout flawlessly
                         modifier = Modifier.clickable {
                             navController.navigate(Screen.PredictionHistoryList.route)
                         }
@@ -253,14 +263,13 @@ fun ConsumerHomeScreen(
                     }
                 } else if (historyList.isEmpty()) {
                     Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                        Text(text = "No scan histories found. Run a new scan above!", color = TextSecondary, fontSize = 13.sp)
+                        Text(text = "No scan histories found. Run a new scan above!", color = Color.Gray, fontSize = 13.sp)
                     }
                 } else {
                     // Iterates dynamically to render up to the 3 most recent real database scan returns
                     historyList.take(3).forEach { item ->
                         AquaCard(
                             onClick = {
-                                // Endpoint 4: Pull single detail object, then perform safe scene navigation transition
                                 viewModel.fetchPredictionDetail(item.id) {
                                     navController.navigate("prediction_detail_screen")
                                 }
@@ -276,11 +285,11 @@ fun ConsumerHomeScreen(
                                 }
                                 Spacer(Modifier.width(16.dp))
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(text = item.species, fontWeight = FontWeight.Bold, color = TextPrimary)
+                                    Text(text = item.species, fontWeight = FontWeight.Bold, color = Color.Black)
                                     Text(
                                         text = "${item.created_at.take(10)} • Match: ${item.species_confidence_percent}",
                                         fontSize = 12.sp,
-                                        color = TextSecondary
+                                        color = Color.DarkGray
                                     )
                                 }
 
@@ -380,7 +389,7 @@ fun ResultCard(data: com.example.fishapp.api.FishPredictionResponse) {
                     Text(
                         text = "HEALTH STATUS VERDICT:",
                         fontSize = 11.sp,
-                        color = TextSecondary,
+                        color = Color.DarkGray,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp
                     )
@@ -401,8 +410,8 @@ fun ResultCard(data: com.example.fishapp.api.FishPredictionResponse) {
 @Composable
 fun ResultRow(label: String, value: String) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, color = TextSecondary, fontSize = 13.sp, fontWeight = FontWeight.Normal)
-        Text(value, fontWeight = FontWeight.SemiBold, color = TextPrimary, fontSize = 13.sp)
+        Text(label, color = Color.DarkGray, fontSize = 13.sp, fontWeight = FontWeight.Normal)
+        Text(value, fontWeight = FontWeight.SemiBold, color = Color.Black, fontSize = 13.sp)
     }
 }
 
