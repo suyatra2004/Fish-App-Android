@@ -35,12 +35,13 @@ fun DiseaseReportDetailScreen(
     val rawToken = com.example.fishapp.api.RetrofitClient.getAuthToken() ?: ""
     val authHeaderValue = if (rawToken.startsWith("Bearer ", ignoreCase = true)) rawToken else "Bearer $rawToken"
 
-    // FIXED: Safely parsing the image endpoint using the backend's explicit photo_url response field
+    // FIXED: Maps photo path variants directly to the backend spec matching relative path configurations
     val imageTargetData = when {
         report == null -> ""
         report.photo_url.startsWith("http://") || report.photo_url.startsWith("https://") -> report.photo_url
         report.photo_url.startsWith("/") -> "http://$backendHostAddress${report.photo_url}"
-        else -> "http://$backendHostAddress/${report.photo_url}"
+        // Re-routes standalone IDs or relative terms directly to the photo path definition
+        else -> "http://$backendHostAddress/admin/reports/${report.id}/photo"
     }
 
     // Set up secure Coil picture loader targeting backend binary image endpoints

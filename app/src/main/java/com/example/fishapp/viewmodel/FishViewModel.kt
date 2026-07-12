@@ -123,6 +123,21 @@ class FishViewModel : ViewModel() {
     private val _isDetailLoading = mutableStateOf(false)
     val isDetailLoading: State<Boolean> = _isDetailLoading
 
+    // ==========================================
+    // ADDED: ADMIN MODERATION CONTROL GLOBAL STATES
+    // ==========================================
+    private val _adminPondsList = mutableStateOf<List<AdminPondResponse>>(emptyList())
+    val adminPondsList: State<List<AdminPondResponse>> = _adminPondsList
+
+    private val _adminReportsList = mutableStateOf<List<AdminReportResponse>>(emptyList())
+    val adminReportsList: State<List<AdminReportResponse>> = _adminReportsList
+
+    private val _isAdminLoading = mutableStateOf(false)
+    val isAdminLoading: State<Boolean> = _isAdminLoading
+
+    private val _adminErrorMessage = mutableStateOf<String?>(null)
+    val adminErrorMessage: State<String?> = _adminErrorMessage
+
 
     // ==========================================
     // EXISTING FUNCTIONS (Preserved)
@@ -222,7 +237,13 @@ class FishViewModel : ViewModel() {
                 val response = if (role.equals("Farmer", ignoreCase = true)) {
                     RetrofitClient.instance.registerFarmer(payload)
                 } else {
-                    RetrofitClient.instance.registerAdmin(payload)
+                    val adminPayload = AdminRegisterRequest(
+                        username = username,
+                        password = password,
+                        full_name = fullName.ifBlank { null },
+                        phone_number = phone.ifBlank { null }
+                    )
+                    RetrofitClient.instance.registerAdmin(adminPayload)
                 }
 
                 if (response.isSuccessful) {
@@ -291,6 +312,75 @@ class FishViewModel : ViewModel() {
     }
 
     // ==========================================
+    // ADDED: ADMIN OPERATIONS ACTIONS PIPELINES
+    // ==========================================
+    fun fetchAllAdminPonds() {
+        viewModelScope.launch {
+            _isAdminLoading.value = true
+            _adminErrorMessage.value = null
+            try {
+                val response = RetrofitClient.instance.getAllPonds("")
+                if (response.isSuccessful && response.body() != null) {
+                    _adminPondsList.value = response.body()!!
+                } else {
+                    _adminErrorMessage.value = "Failed to load global ponds feed (Code: ${response.code()})"
+                }
+            } catch (e: Exception) {
+                _adminErrorMessage.value = "Server connection lost: ${e.localizedMessage}"
+            } finally {
+                _isAdminLoading.value = false
+            }
+        }
+    }
+
+    fun fetchAllAdminReports() {
+        viewModelScope.launch {
+            _isAdminLoading.value = true
+            _adminErrorMessage.value = null
+            try {
+                val response = RetrofitClient.instance.getAllReports("")
+                if (response.isSuccessful && response.body() != null) {
+                    _adminReportsList.value = response.body()!!
+                } else {
+                    _adminErrorMessage.value = "Failed to load global reports feed (Code: ${response.code()})"
+                }
+            } catch (e: Exception) {
+                _adminErrorMessage.value = "Server connection lost: ${e.localizedMessage}"
+            } finally {
+                _isAdminLoading.value = false
+            }
+        }
+    }
+
+    fun moderatePondStatus(pondId: Int, approve: Boolean, onComplete: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.instance.verifyPond(pondId, approve, "")
+                if (response.isSuccessful) {
+                    fetchAllAdminPonds() // Dynamic array state auto-refresh[cite: 1]
+                    onComplete()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun moderateReportStatus(reportId: Int, approve: Boolean, onComplete: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.instance.verifyReport(reportId, approve, "")
+                if (response.isSuccessful) {
+                    fetchAllAdminReports() // Dynamic array state auto-refresh[cite: 1]
+                    onComplete()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    // ==========================================
     // TASK 3 ADDITION: MULTIPART REPORT UPLOAD PIPELINE
     // ==========================================
     fun uploadNewReport(
@@ -302,7 +392,6 @@ class FishViewModel : ViewModel() {
         onSuccess: () -> Unit
     ) {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            // FIXED: Runs execution steps securely switching main dispatchers smoothly
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 _reportUploadState.value = ReportUploadUiState.Loading
             }
@@ -329,7 +418,7 @@ class FishViewModel : ViewModel() {
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         if (response.isSuccessful) {
                             _reportUploadState.value = ReportUploadUiState.Success
-                            fetchAllReports() // Refresh cached feed array tracking states dynamically
+                            fetchAllReports()
                             onSuccess()
                         } else {
                             _reportUploadState.value = ReportUploadUiState.Error("Upload rejected by server (Code: ${response.code()})")
@@ -402,9 +491,15 @@ class FishViewModel : ViewModel() {
         _reportsList.value = emptyList()
         _historyList.value = emptyList()
         _currentDetailItem.value = null
-        _selectedPond.value = null // Purge the active selected pond model cache cleanly
-        _selectedReport.value = null // FIXED: Purge history context caches cleanly on session destroy
+        _selectedPond.value = null
+        _selectedReport.value = null
         _reportUploadState.value = ReportUploadUiState.Idle
+
+        // Clear Admin Specific State Caches cleanly on logout
+        _adminPondsList.value = emptyList()
+        _adminReportsList.value = emptyList()
+        _adminErrorMessage.value = null
+
         resetState()
         RetrofitClient.clearAuthToken()
     }

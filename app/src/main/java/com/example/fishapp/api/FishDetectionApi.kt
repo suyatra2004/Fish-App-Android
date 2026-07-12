@@ -37,6 +37,14 @@ data class FarmerRegisterRequest(
     val phone_number: String // REQUIRED for farmers
 )
 
+// ADDED FOR ADMIN REGISTRATION PIPELINE
+data class AdminRegisterRequest(
+    val username: String,
+    val password: String,
+    val full_name: String?,
+    val phone_number: String?
+)
+
 data class UserResponse(
     val username: String,
     val full_name: String,
@@ -96,6 +104,34 @@ data class ReportResponse(
     val photo_url: String
 )
 
+// ADDED: Admin Specific Moderation Response Data Classes
+data class AdminPondResponse(
+    val id: Int,
+    val name: String,
+    val latitude: Double?,
+    val longitude: Double?,
+    val estimated_area: Double?,
+    val fish_species: List<String>,
+    val verified: Boolean,
+    val created_at: String,
+    val image_url: String?,
+    val owner_username: String,
+    val owner_phone: String?
+)
+
+data class AdminReportResponse(
+    val id: Int,
+    val report_name: String,
+    val symptoms: String,
+    val pond_id: Int,
+    val pond_name: String,
+    val created_at: String,
+    val photo_url: String,
+    val verified: Boolean,
+    val farmer_username: String,
+    val farmer_phone: String?
+)
+
 // ==========================================
 // 3. COMPLETE ROUTING INTERFACE
 // ==========================================
@@ -116,7 +152,7 @@ interface FishDetectionApi {
 
     @POST("admin-register")
     suspend fun registerAdmin(
-        @Body request: FarmerRegisterRequest
+        @Body request: AdminRegisterRequest
     ): Response<UserResponse>
 
     @POST("login")
@@ -159,7 +195,6 @@ interface FishDetectionApi {
 
     // --- Farmer Operational Endpoints ---
 
-    // FIXED: Explicitly bound the key "geo_image" and matched parameter sequencing to prevent compilation crashes
     @Multipart
     @POST("ponds")
     suspend fun createPond(
@@ -168,7 +203,7 @@ interface FishDetectionApi {
         @Part("longitude") longitude: RequestBody,
         @Part("estimated_area") estimatedArea: RequestBody,
         @Part("fish_species") fishSpecies: RequestBody,
-        @Part geoImage: MultipartBody.Part // Matches your FishViewModel's invocation parameter sequence mapping
+        @Part geoImage: MultipartBody.Part
     ): Response<PondResponse>
 
     @GET("ponds")
@@ -176,7 +211,6 @@ interface FishDetectionApi {
         @Header("Authorization") bearerToken: String = ""
     ): Response<List<PondResponse>>
 
-    // ADDED: Endpoint 5 & 6 supporting specific single pond details and image rendering engines
     @GET("ponds/{pond_id}")
     suspend fun getPondDetail(
         @Path("pond_id") pondId: Int,
@@ -203,6 +237,45 @@ interface FishDetectionApi {
     suspend fun listReports(
         @Header("Authorization") bearerToken: String = ""
     ): Response<List<ReportResponse>>
+
+
+    // --- ADDED: Admin Moderation Operational Endpoints ---
+
+    @GET("admin/ponds")
+    suspend fun getAllPonds(
+        @Header("Authorization") bearerToken: String = ""
+    ): Response<List<AdminPondResponse>>
+
+    @GET("admin/ponds/{pond_id}/image")
+    suspend fun getAdminPondImage(
+        @Path("pond_id") pondId: Int,
+        @Header("Authorization") bearerToken: String = ""
+    ): Response<ResponseBody>
+
+    @PATCH("admin/ponds/{pond_id}/verify")
+    suspend fun verifyPond(
+        @Path("pond_id") pondId: Int,
+        @Query("verified") verified: Boolean,
+        @Header("Authorization") bearerToken: String = ""
+    ): Response<Map<String, Any>>
+
+    @GET("admin/reports")
+    suspend fun getAllReports(
+        @Header("Authorization") bearerToken: String = ""
+    ): Response<List<AdminReportResponse>>
+
+    @GET("admin/reports/{report_id}/photo")
+    suspend fun getAdminReportPhoto(
+        @Path("report_id") reportId: Int,
+        @Header("Authorization") bearerToken: String = ""
+    ): Response<ResponseBody>
+
+    @PATCH("admin/reports/{report_id}/verify")
+    suspend fun verifyReport(
+        @Path("report_id") reportId: Int,
+        @Query("verified") verified: Boolean,
+        @Header("Authorization") bearerToken: String = ""
+    ): Response<Map<String, Any>>
 
 
     // --- System Status Endpoints ---
