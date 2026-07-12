@@ -330,7 +330,8 @@ fun AdminReportCard(
 @Composable
 fun AdminPondDetailDialog(pond: AdminPondResponse, onDismiss: () -> Unit) {
     val context = LocalContext.current
-    val backendHostAddress = "192.168.0.176:8000"
+    val backendHostAddress = com.example.fishapp.api.RetrofitClient.BACKEND_HOST
+
     val rawToken = com.example.fishapp.api.RetrofitClient.getAuthToken() ?: ""
     val authHeaderValue = if (rawToken.startsWith("Bearer ", ignoreCase = true)) rawToken else "Bearer $rawToken"
 
@@ -389,7 +390,8 @@ fun AdminPondDetailDialog(pond: AdminPondResponse, onDismiss: () -> Unit) {
 @Composable
 fun AdminReportDetailDialog(report: AdminReportResponse, onDismiss: () -> Unit) {
     val context = LocalContext.current
-    val backendHostAddress = "192.168.0.176:8000"
+    val backendHostAddress = com.example.fishapp.api.RetrofitClient.BACKEND_HOST
+
     val rawToken = com.example.fishapp.api.RetrofitClient.getAuthToken() ?: ""
     val authHeaderValue = if (rawToken.startsWith("Bearer ", ignoreCase = true)) rawToken else "Bearer $rawToken"
 

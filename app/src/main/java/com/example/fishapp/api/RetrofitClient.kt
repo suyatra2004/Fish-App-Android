@@ -7,8 +7,11 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
-    // IMPORTANT: Verify this IP address matches your friend's current IP
-    private const val BASE_URL = "http://192.168.0.176:8000/"
+    // ➔ CHANGE YOUR IP ONLY HERE, NOWHERE ELSE!
+    const val BACKEND_HOST = "192.168.112.17:8000"
+
+    // Dynamically builds the base server address off the centralized host constant
+    private const val BASE_URL = "http://$BACKEND_HOST/"
 
     // Variable to temporarily hold the JWT token string securely in memory
     private var authToken: String? = null

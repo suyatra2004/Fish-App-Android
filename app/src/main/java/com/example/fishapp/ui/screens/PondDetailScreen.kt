@@ -56,7 +56,8 @@ fun PondDetailScreen(
     val pond = viewModel.selectedPond
 
     // DYNAMIC LOCAL HOST ROUTE: Matches your dashboard setup perfectly
-    val backendHostAddress = "192.168.0.176:8000"
+    val backendHostAddress = com.example.fishapp.api.RetrofitClient.BACKEND_HOST
+
 
     // Set up secure Coil picture loader intersecting explicit binary stream target routes
     val rawToken = com.example.fishapp.api.RetrofitClient.getAuthToken() ?: ""

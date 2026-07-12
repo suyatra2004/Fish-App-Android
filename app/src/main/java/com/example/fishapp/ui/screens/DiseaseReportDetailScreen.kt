@@ -30,7 +30,8 @@ fun DiseaseReportDetailScreen(
 ) {
     val context = LocalContext.current
     val report = viewModel.selectedReport
-    val backendHostAddress = "192.168.0.176:8000"
+    val backendHostAddress =  com.example.fishapp.api.RetrofitClient.BACKEND_HOST
+
 
     val rawToken = com.example.fishapp.api.RetrofitClient.getAuthToken() ?: ""
     val authHeaderValue = if (rawToken.startsWith("Bearer ", ignoreCase = true)) rawToken else "Bearer $rawToken"

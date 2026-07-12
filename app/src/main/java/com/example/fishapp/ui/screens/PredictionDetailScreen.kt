@@ -49,7 +49,8 @@ fun PredictionDetailScreen(
 
     // DYNAMIC BASE ADDRESS HOST CONFIGURATION:
     // Matches your production network config exactly!
-    val backendHostAddress = "192.168.0.176:8000"
+    val backendHostAddress =  com.example.fishapp.api.RetrofitClient.BACKEND_HOST
+
 
     Scaffold(
         topBar = {
