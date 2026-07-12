@@ -75,8 +75,8 @@ fun AdminDashboard(
                     IconButton(onClick = {
                         viewModel.logoutUser()
                         // FIXED: Safely navigates directly to the login path without popping the graph anchor line
-                        navController.navigate("login") {
-                            popUpTo("login") { inclusive = false }
+                        navController.navigate("login_selection") {
+                            popUpTo("login_selection") { inclusive = true }
                             launchSingleTop = true
                         }
                     }) {
