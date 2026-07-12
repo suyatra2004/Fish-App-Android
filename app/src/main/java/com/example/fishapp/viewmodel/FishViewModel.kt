@@ -487,33 +487,33 @@ class FishViewModel : ViewModel() {
     // FIXED CLOSURE OPERATIONS WITH API CALL INTEGRATION
     // ==========================================
     fun logoutUser() {
+        val rawToken = RetrofitClient.getAuthToken() ?: ""
+        val authHeaderValue = if (rawToken.startsWith("Bearer ", ignoreCase = true)) rawToken else "Bearer $rawToken"
+
+        // Clear local session state immediately so the UI cannot bounce back into an authenticated route.
+        _authUiState.value = AuthUiState.Unauthenticated
+        _pondsList.value = emptyList()
+        _reportsList.value = emptyList()
+        _historyList.value = emptyList()
+        _currentDetailItem.value = null
+        _selectedPond.value = null
+        _selectedReport.value = null
+        _reportUploadState.value = ReportUploadUiState.Idle
+
+        // Purge Admin caches
+        _adminPondsList.value = emptyList()
+        _adminReportsList.value = emptyList()
+        _adminErrorMessage.value = null
+
+        resetState()
+        RetrofitClient.clearAuthToken()
+
         viewModelScope.launch {
             try {
-                val rawToken = RetrofitClient.getAuthToken() ?: ""
-                val authHeaderValue = if (rawToken.startsWith("Bearer ", ignoreCase = true)) rawToken else "Bearer $rawToken"
-
                 // Triggers structural logout pipeline on backend server
                 RetrofitClient.instance.logout(authHeaderValue)
             } catch (e: Exception) {
                 e.printStackTrace()
-            } finally {
-                // Wipe state machine parameters completely
-                _authUiState.value = AuthUiState.Unauthenticated
-                _pondsList.value = emptyList()
-                _reportsList.value = emptyList()
-                _historyList.value = emptyList()
-                _currentDetailItem.value = null
-                _selectedPond.value = null
-                _selectedReport.value = null
-                _reportUploadState.value = ReportUploadUiState.Idle
-
-                // Purge Admin caches
-                _adminPondsList.value = emptyList()
-                _adminReportsList.value = emptyList()
-                _adminErrorMessage.value = null
-
-                resetState()
-                RetrofitClient.clearAuthToken()
             }
         }
     }

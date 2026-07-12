@@ -31,6 +31,7 @@ import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.example.fishapp.api.AdminPondResponse
 import com.example.fishapp.api.AdminReportResponse
+import com.example.fishapp.navigation.Screen
 import com.example.fishapp.ui.components.AquaCard
 import com.example.fishapp.ui.theme.*
 import com.example.fishapp.viewmodel.FishViewModel
@@ -74,9 +75,8 @@ fun AdminDashboard(
                 actions = {
                     IconButton(onClick = {
                         viewModel.logoutUser()
-                        // FIXED: Safely navigates directly to the login path without popping the graph anchor line
-                        navController.navigate("login") {
-                            popUpTo("login") { inclusive = false }
+                        navController.navigate(Screen.LoginSelection.route) {
+                            popUpTo(0) { inclusive = true }
                             launchSingleTop = true
                         }
                     }) {
