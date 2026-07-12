@@ -1,212 +1,181 @@
 package com.example.fishapp.ui.screens
 
-import android.Manifest
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BugReport
-import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import androidx.navigation.NavHostController
-import com.example.fishapp.navigation.Screen
-import com.example.fishapp.ui.components.*
+import coil.compose.rememberAsyncImagePainter
+import com.example.fishapp.ui.components.AquaTopBar
 import com.example.fishapp.ui.theme.*
+import com.example.fishapp.viewmodel.FishViewModel
+import com.example.fishapp.viewmodel.ReportUploadUiState
 
 @Composable
-fun DiseaseReportScreen(navController: NavHostController, onBack: () -> Unit) {
+fun DiseaseReportScreen(
+    navController: NavHostController,
+    viewModel: FishViewModel, // Accepting the injected shared state machine securely
+    onBack: () -> Unit
+) {
     val context = LocalContext.current
-    var isSubmitted by remember { mutableStateOf(false) }
-    var pondName by remember { mutableStateOf("") }
-    var symptoms by remember { mutableStateOf("") }
-    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
 
-    // 1. Camera Permission Launcher
-    val cameraPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            navController.navigate(Screen.CameraScanner.route)
-        } else {
-            Toast.makeText(context, "Permission Denied", Toast.LENGTH_SHORT).show()
-        }
+    // Form Input States
+    var pondName by remember { mutableStateOf("") }
+    var reportName by remember { mutableStateOf("") }
+    var symptoms by remember { mutableStateOf("") }
+    var imageUri by remember { mutableStateOf<Uri?>(null) }
+
+    // Observe live submission state parameters to show the loading wheel spinner overlay
+    val uploadState by viewModel.reportUploadState
+
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        imageUri = uri
     }
 
-    // 2. Gallery Photo Picker Launcher
-    val photoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia(),
-        onResult = { uri -> selectedImageUri = uri }
-    )
+    // Reset upload feedback machine flags cleanly when screen builds fresh
+    LaunchedEffect(Unit) {
+        viewModel.resetReportUploadState()
+    }
 
-    val textFieldColors = OutlinedTextFieldDefaults.colors(
-        focusedTextColor = TextPrimary,
-        unfocusedTextColor = TextPrimary,
-        focusedBorderColor = BrandGreen,
-        unfocusedBorderColor = Color.Gray.copy(alpha = 0.4f),
-        focusedLabelColor = BrandGreen,
-        unfocusedLabelColor = TextSecondary,
-        cursorColor = BrandGreen
-    )
-
-    if (isSubmitted) {
-        // This calls the function defined at the bottom of this file
-        SuccessView(onReturn = onBack)
-    } else {
+    Scaffold(
+        topBar = {
+            AquaTopBar(
+                title = "New Outbreak Report",
+                subtitle = "Submit diagnostic alert to experts",
+                onBack = onBack
+            )
+        },
+        containerColor = AquaBackground
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(AquaBackground)
+                .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            AquaTopBar(
-                title = "Report Outbreak",
-                subtitle = "Expert help for your fish health",
-                onBack = onBack
+            // --- 1. POND NAME INPUT ---
+            OutlinedTextField(
+                value = pondName,
+                onValueChange = { pondName = it },
+                label = { Text("Pond Name") },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(8.dp)
             )
 
-            Column(
-                modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+            // --- 2. REPORT TITLE INPUT ---
+            OutlinedTextField(
+                value = reportName,
+                onValueChange = { reportName = it },
+                label = { Text("Report Title / Issue Name") },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(8.dp)
+            )
+
+            // --- 3. PATHOLOGICAL SYMPTOMS INPUT ---
+            OutlinedTextField(
+                value = symptoms,
+                onValueChange = { symptoms = it },
+                label = { Text("Observed Symptoms / Behavior") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 3,
+                maxLines = 5,
+                shape = RoundedCornerShape(8.dp)
+            )
+
+            // --- 4. IMAGE UPLOAD AREA WITH CONTENT SELECTION ---
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.White)
+                    .clickable { imagePickerLauncher.launch("image/*") },
+                contentAlignment = Alignment.Center
             ) {
-                SectionLabel("INCIDENT DETAILS")
-
-                OutlinedTextField(
-                    value = pondName,
-                    onValueChange = { pondName = it },
-                    label = { Text("Pond Name/Location") },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = textFieldColors,
-                    singleLine = true
-                )
-
-                OutlinedTextField(
-                    value = symptoms,
-                    onValueChange = { symptoms = it },
-                    label = { Text("Observation/Symptoms") },
-                    modifier = Modifier.fillMaxWidth().height(120.dp),
-                    placeholder = { Text("Describe symptoms...") },
-                    colors = textFieldColors
-                )
-
-                SectionLabel("UPLOAD EVIDENCE")
-
-                DashedUploadBox(
-                    icon = { Icon(Icons.Default.BugReport, contentDescription = null, tint = BrandGreen) },
-                    title = if (selectedImageUri == null) "Attach Photo" else "Photo Attached ✅",
-                    subtitle = if (selectedImageUri == null) "Clear photo of the sick fish" else "Click to change photo",
-                    onCamera = {
-                        val permissionCheck = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
-                        if (permissionCheck == PackageManager.PERMISSION_GRANTED) {
-                            navController.navigate(Screen.CameraScanner.route)
-                        } else {
-                            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-                        }
-                    },
-                    onGallery = {
-                        photoPickerLauncher.launch(
-                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                        )
-                    }
-                )
-
-                if (selectedImageUri != null) {
-                    Text(
-                        text = "Evidence photo ready for upload",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = BrandGreen
+                if (imageUri != null) {
+                    Image(
+                        painter = rememberAsyncImagePainter(imageUri),
+                        contentDescription = "Selected Evidence Snapshot File",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
                     )
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Button(
-                    onClick = {
-                        if (pondName.isNotEmpty() && symptoms.isNotEmpty()) {
-                            isSubmitted = true
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = BrandGreen),
-                    shape = MaterialTheme.shapes.medium,
-                    enabled = pondName.isNotEmpty() && symptoms.isNotEmpty()
-                ) {
-                    Text("Submit Urgent Report", style = MaterialTheme.typography.titleMedium)
+                } else {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Default.CloudUpload, contentDescription = null, tint = BrandGreen, modifier = Modifier.size(36.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Upload Evidence Picture", color = TextSecondary, fontSize = 13.sp)
+                    }
                 }
             }
-        }
-    }
-}
 
-@Composable
-fun SuccessView(onReturn: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White)
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Surface(
-            modifier = Modifier.size(120.dp),
-            shape = CircleShape,
-            color = BrandGreen.copy(alpha = 0.1f)
-        ) {
-            Icon(
-                imageVector = Icons.Default.CheckCircle,
-                contentDescription = null,
-                tint = BrandGreen,
-                modifier = Modifier.padding(24.dp)
-            )
-        }
+            Spacer(modifier = Modifier.height(8.dp))
 
-        Spacer(modifier = Modifier.height(32.dp))
+            // --- 5. ACTION BUTTON WITH LOADING SPIN LOGIC ---
+            val isLoading = uploadState is ReportUploadUiState.Loading
 
-        Text(
-            text = "Report Submitted!",
-            fontSize = 26.sp,
-            fontWeight = FontWeight.Bold,
-            color = TextPrimary,
-            textAlign = TextAlign.Center
-        )
+            Button(
+                onClick = {
+                    if (pondName.isBlank() || reportName.isBlank() || symptoms.isBlank() || imageUri == null) {
+                        Toast.makeText(context, "Please fulfill all inputs and upload an image.", Toast.LENGTH_SHORT).show()
+                    } else {
+                        viewModel.uploadNewReport(
+                            context = context,
+                            pondName = pondName,
+                            reportName = reportName,
+                            symptoms = symptoms,
+                            imageUri = imageUri!!,
+                            onSuccess = {
+                                Toast.makeText(context, "Report posted successfully!", Toast.LENGTH_SHORT).show()
+                                navController.popBackStack() // Smoothly return to the choice menu portal scene
+                            }
+                        )
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = BrandGreen),
+                enabled = !isLoading // Blocks double submission clicks while transmission runs
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                } else {
+                    Text("Submit Report", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                }
+            }
 
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Text(
-            text = "Your report has been logged. An expert will review the data shortly.",
-            fontSize = 15.sp,
-            color = TextSecondary,
-            textAlign = TextAlign.Center,
-            lineHeight = 22.sp
-        )
-
-        Spacer(modifier = Modifier.height(48.dp))
-
-        Button(
-            onClick = onReturn,
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = BrandGreen),
-            shape = MaterialTheme.shapes.medium
-        ) {
-            Text("Back to Hub", fontWeight = FontWeight.Bold)
+            // Error display warning message logs
+            if (uploadState is ReportUploadUiState.Error) {
+                Text(
+                    text = (uploadState as ReportUploadUiState.Error).message,
+                    color = Color.Red,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
+            }
         }
     }
 }

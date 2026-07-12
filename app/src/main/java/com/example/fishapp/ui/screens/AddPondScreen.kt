@@ -131,7 +131,22 @@ fun AddPondScreen(
     }
 
     if (isSuccess) {
-        SuccessView(onReturn = onBack)
+        // FIXED: Replaced missing SuccessView component with a robust native Material 3 AlertDialog
+        AlertDialog(
+            onDismissRequest = { onBack() },
+            confirmButton = {
+                Button(
+                    onClick = { onBack() },
+                    colors = ButtonDefaults.buttonColors(containerColor = BrandGreen)
+                ) {
+                    Text("OK")
+                }
+            },
+            title = { Text("Registration Successful", fontWeight = FontWeight.Bold) },
+            text = { Text("Your new pond water body asset has been created and logged successfully in the verification audit system.") },
+            shape = RoundedCornerShape(12.dp),
+            containerColor = Color.White
+        )
     } else {
         Column(
             modifier = Modifier
@@ -158,7 +173,7 @@ fun AddPondScreen(
                         .height(180.dp)
                         .background(Color.White, RoundedCornerShape(12.dp))
                         .clip(RoundedCornerShape(12.dp))
-                        .clickable(enabled = !isRegisteringPond) { // Disable changes during network calls
+                        .clickable(enabled = !isRegisteringPond) {
                             val fineLoc = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
                             val coarseLoc = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION)
                             if (fineLoc == PackageManager.PERMISSION_GRANTED || coarseLoc == PackageManager.PERMISSION_GRANTED) {
@@ -244,7 +259,7 @@ fun AddPondScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // --- PIPELINE COMPLIANT UPLOAD SUBMIT BUTTON (WITH LOADING VISUALS) ---
+                // --- PIPELINE COMPLIANT UPLOAD SUBMIT BUTTON ---
                 Button(
                     onClick = {
                         val areaValue = area.toDoubleOrNull()
@@ -253,7 +268,6 @@ fun AddPondScreen(
                         if (pondName.isBlank() || areaValue == null || speciesList.isEmpty() || watermarkedImageUri == null || latitude == null || longitude == null) {
                             Toast.makeText(context, "Please provide complete details and select a valid image.", Toast.LENGTH_LONG).show()
                         } else {
-                            // Turn loading animations ON
                             isRegisteringPond = true
 
                             viewModel.uploadNewPond(

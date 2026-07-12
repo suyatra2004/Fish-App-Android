@@ -23,8 +23,13 @@ sealed class Screen(val route: String) {
     object PredictionDetail      : Screen("prediction_detail_screen")
     object PredictionHistoryList : Screen("prediction_history_list")
 
-    // ADDED: Route targeting individual clicked pond details view
+    // Route targeting individual clicked pond details view
     object PondDetail            : Screen("pond_detail_screen")
+
+    // TASK 1 & 2 ROUTE ACCRETIONS: Portal interfaces supporting history metrics
+    object DiseaseMenu           : Screen("disease_menu_screen")
+    object DiseaseHistoryList    : Screen("disease_history_list_screen")
+    object DiseaseDetail         : Screen("disease_detail_screen")
 }
 
 @Composable
@@ -83,13 +88,38 @@ fun AquaSenseNavGraph(
             )
         }
 
-        // 4. Farmer Service Hub
+        // 4. Farmer Service Hub (UPDATED: Triggers Disease Menu route entry path instead of direct form)
         composable(Screen.FarmerHub.route) {
             FarmerHubScreen(
                 navController = navController,
                 viewModel = viewModel,
                 onManagePonds = { navController.navigate(Screen.FarmerDashboard.route) },
-                onReportDisease = { navController.navigate(Screen.DiseaseReport.route) },
+                onReportDisease = { navController.navigate(Screen.DiseaseMenu.route) },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        // --- NEW ROUTE COMPOSABLE: Task 1 Intermediate Option Menu Picker ---
+        composable(Screen.DiseaseMenu.route) {
+            DiseaseMenuScreen(
+                navController = navController,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        // --- NEW ROUTE COMPOSABLE: Task 2 Historic Submissions Listing Feed ---
+        composable(Screen.DiseaseHistoryList.route) {
+            DiseaseHistoryScreen(
+                navController = navController,
+                viewModel = viewModel,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        // --- NEW ROUTE COMPOSABLE: Task 2 Granular Single Incident Report Inspection Scene ---
+        composable(Screen.DiseaseDetail.route) {
+            DiseaseReportDetailScreen(
+                viewModel = viewModel,
                 onBack = { navController.popBackStack() }
             )
         }
@@ -103,10 +133,11 @@ fun AquaSenseNavGraph(
             )
         }
 
-        // 6. Disease Reporting Form
+        // 6. Disease Reporting Form (UPDATED: Added the viewModel pass-down hook)
         composable(Screen.DiseaseReport.route) {
             DiseaseReportScreen(
                 navController = navController,
+                viewModel = viewModel, // FIXED: Now cleanly injected to power end-to-end APIs
                 onBack = { navController.popBackStack() }
             )
         }
@@ -119,7 +150,7 @@ fun AquaSenseNavGraph(
             )
         }
 
-        // 8. ADDED: Clickable Pond Detail Inspection Sub-View
+        // 8. Clickable Pond Detail Inspection Sub-View
         composable(Screen.PondDetail.route) {
             PondDetailScreen(
                 navController = navController,

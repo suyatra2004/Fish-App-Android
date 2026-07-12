@@ -31,6 +31,14 @@ sealed class AuthUiState {
     data class Error(val message: String) : AuthUiState()
 }
 
+// Added for tracking report submission transactions cleanly
+sealed class ReportUploadUiState {
+    object Idle : ReportUploadUiState()
+    object Loading : ReportUploadUiState()
+    object Success : ReportUploadUiState()
+    data class Error(val message: String) : ReportUploadUiState()
+}
+
 class FishViewModel : ViewModel() {
 
     // ==========================================
@@ -69,7 +77,7 @@ class FishViewModel : ViewModel() {
     }
 
     // ==========================================
-    // STEP 4: ADMIN / EXPERT REPORT STATES
+    // STEP 4: ADMIN / EXPERT REPORT STATES & TASK 2 ADDITIONS
     // ==========================================
     private val _reportsList = mutableStateOf<List<ReportResponse>>(emptyList())
     val reportsList: State<List<ReportResponse>> = _reportsList
@@ -79,6 +87,22 @@ class FishViewModel : ViewModel() {
 
     private val _reportsErrorMessage = mutableStateOf<String?>(null)
     val reportsErrorMessage: State<String?> = _reportsErrorMessage
+
+    // ADDED FOR TASK 2: Caches active single report view context parameters
+    private val _selectedReport = mutableStateOf<ReportResponse?>(null)
+    val selectedReport: ReportResponse? get() = _selectedReport.value
+
+    // ADDED FOR TASK 3: Tracks upload feedback status for the creation form UI
+    private val _reportUploadState = mutableStateOf<ReportUploadUiState>(ReportUploadUiState.Idle)
+    val reportUploadState: State<ReportUploadUiState> = _reportUploadState
+
+    fun setSelectedReport(report: ReportResponse?) {
+        _selectedReport.value = report
+    }
+
+    fun resetReportUploadState() {
+        _reportUploadState.value = ReportUploadUiState.Idle
+    }
 
     // ==========================================
     // NEW: CONSUMER SCAN PREDICTION HISTORY STATES
@@ -240,7 +264,7 @@ class FishViewModel : ViewModel() {
     }
 
     // ==========================================
-    // STEP 4 FEATURE OPERATIONS (Admin Outbreak Streamer)
+    // STEP 4 FEATURE OPERATIONS (Admin / Farmer Outbreak History Streamer)
     // ==========================================
     fun fetchAllReports() {
         viewModelScope.launch {
@@ -252,16 +276,75 @@ class FishViewModel : ViewModel() {
                     _reportsList.value = response.body()!!
                 } else {
                     if (response.code() == 401) {
-                        _reportsErrorMessage.value = "Session expired. Admin access unauthorized."
+                        _reportsErrorMessage.value = "Session expired. Access unauthorized."
                         logoutUser()
                     } else {
                         _reportsErrorMessage.value = "Failed to load reports pipeline (Code: ${response.code()})"
                     }
                 }
             } catch (e: Exception) {
-                _reportsErrorMessage.value = "Network timeout. Expert dashboard cannot reach backend server."
+                _reportsErrorMessage.value = "Network timeout. Unable to reach backend server streams."
             } finally {
                 _isReportsLoading.value = false
+            }
+        }
+    }
+
+    // ==========================================
+    // TASK 3 ADDITION: MULTIPART REPORT UPLOAD PIPELINE
+    // ==========================================
+    fun uploadNewReport(
+        context: Context,
+        pondName: String,
+        reportName: String,
+        symptoms: String,
+        imageUri: Uri,
+        onSuccess: () -> Unit
+    ) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            // FIXED: Runs execution steps securely switching main dispatchers smoothly
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                _reportUploadState.value = ReportUploadUiState.Loading
+            }
+
+            try {
+                val mediaType = "text/plain".toMediaTypeOrNull()
+                val pondNamePart = pondName.toRequestBody(mediaType)
+                val reportNamePart = reportName.toRequestBody(mediaType)
+                val symptomsPart = symptoms.toRequestBody(mediaType)
+
+                val inputStream = context.contentResolver.openInputStream(imageUri)
+                val bytes = inputStream?.readBytes()
+                inputStream?.close()
+
+                if (bytes != null) {
+                    val imageMediaType = "image/jpeg".toMediaTypeOrNull()
+                    val requestFile = bytes.toRequestBody(imageMediaType)
+                    val photoPart = MultipartBody.Part.createFormData("photo", "disease_log.jpg", requestFile)
+
+                    val response = RetrofitClient.instance.createReport(
+                        pondNamePart, reportNamePart, symptomsPart, photoPart, ""
+                    )
+
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        if (response.isSuccessful) {
+                            _reportUploadState.value = ReportUploadUiState.Success
+                            fetchAllReports() // Refresh cached feed array tracking states dynamically
+                            onSuccess()
+                        } else {
+                            _reportUploadState.value = ReportUploadUiState.Error("Upload rejected by server (Code: ${response.code()})")
+                        }
+                    }
+                } else {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        _reportUploadState.value = ReportUploadUiState.Error("Failed to read image data metrics.")
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    _reportUploadState.value = ReportUploadUiState.Error("Connection lost: ${e.localizedMessage}")
+                }
             }
         }
     }
@@ -320,6 +403,8 @@ class FishViewModel : ViewModel() {
         _historyList.value = emptyList()
         _currentDetailItem.value = null
         _selectedPond.value = null // Purge the active selected pond model cache cleanly
+        _selectedReport.value = null // FIXED: Purge history context caches cleanly on session destroy
+        _reportUploadState.value = ReportUploadUiState.Idle
         resetState()
         RetrofitClient.clearAuthToken()
     }
