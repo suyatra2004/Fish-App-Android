@@ -55,15 +55,15 @@ fun AdminDashboard(
     var selectedPondDetail by remember { mutableStateOf<AdminPondResponse?>(null) }
     var selectedReportDetail by remember { mutableStateOf<AdminReportResponse?>(null) }
 
-    // FIXED: Dialog state control to toggle exit prompt visibility matching consumer flow
+    // Dialog state control to toggle exit prompt visibility
     var showExitDialog by remember { mutableStateOf(false) }
 
-    // FIXED: Intercepts structural back keys or hardware swipe gestures
+    // Intercepts structural back keys or hardware swipe gestures
     BackHandler(enabled = true) {
         showExitDialog = true
     }
 
-    // FIXED: High-contrast exit dialog matching Consumer HomeScreen specifications
+    // High-contrast exit confirmation dialog
     if (showExitDialog) {
         AlertDialog(
             onDismissRequest = { showExitDialog = false },
@@ -76,7 +76,7 @@ fun AdminDashboard(
             },
             text = {
                 Text(
-                    text = "Are you sure you want to exit AquaSense?",
+                    text = "Are you sure you want to exit the Admin Dashboard?",
                     color = Color.DarkGray
                 )
             },
@@ -87,7 +87,12 @@ fun AdminDashboard(
                     onClick = {
                         showExitDialog = false
                         viewModel.logoutUser() // Clear session flags securely
-                        (context as? android.app.Activity)?.finishAffinity() // Safely exit app completely
+
+                        // FIXED: Smoothly redirects to the Login Selection screen and clears the admin view from the history graph
+                        navController.navigate("login_selection") {
+                            popUpTo("login_selection") { inclusive = false }
+                            launchSingleTop = true
+                        }
                     }
                 ) {
                     Text("Yes", color = BrandGreen, fontWeight = FontWeight.Bold)
@@ -119,7 +124,7 @@ fun AdminDashboard(
                     }
                 },
                 actions = {
-                    // FIXED: Reassigned to prompt the confirmation dialog on click
+                    // Prompts the confirmation dialog on click
                     IconButton(onClick = { showExitDialog = true }) {
                         Icon(Icons.Default.Logout, contentDescription = "Logout", tint = Color.White)
                     }
