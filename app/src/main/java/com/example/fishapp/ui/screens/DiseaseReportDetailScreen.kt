@@ -35,10 +35,18 @@ fun DiseaseReportDetailScreen(
     val rawToken = com.example.fishapp.api.RetrofitClient.getAuthToken() ?: ""
     val authHeaderValue = if (rawToken.startsWith("Bearer ", ignoreCase = true)) rawToken else "Bearer $rawToken"
 
+    // FIXED: Safely parsing the image endpoint using the backend's explicit photo_url response field
+    val imageTargetData = when {
+        report == null -> ""
+        report.photo_url.startsWith("http://") || report.photo_url.startsWith("https://") -> report.photo_url
+        report.photo_url.startsWith("/") -> "http://$backendHostAddress${report.photo_url}"
+        else -> "http://$backendHostAddress/${report.photo_url}"
+    }
+
     // Set up secure Coil picture loader targeting backend binary image endpoints
     val imagePainter = rememberAsyncImagePainter(
         model = ImageRequest.Builder(context)
-            .data(if (report != null) "http://$backendHostAddress/reports/${report.id}/image" else "")
+            .data(imageTargetData)
             .addHeader("Authorization", authHeaderValue)
             .crossfade(true)
             .build()
@@ -67,11 +75,11 @@ fun DiseaseReportDetailScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // 1. DYNAMIC OUTBREAK BINARY SNAPSHOT HEADER
+                // 1. DYNAMIC OUTBREAK SNAPSHOT HEADER
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(220.dp)
+                        .height(240.dp)
                         .clip(RoundedCornerShape(14.dp))
                         .background(Color(0xFFE2E8F0))
                 ) {
@@ -92,7 +100,7 @@ fun DiseaseReportDetailScreen(
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Target Reservoir: ${report.pond_name}", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 15.sp)
                         Text("Pond Registered ID reference: #${report.pond_id}", color = TextSecondary, fontSize = 13.sp)
-                        Text("Created Date: ${report.created_at}", color = Color.Gray, fontSize = 12.sp)
+                        Text("Created Date: ${if(report.created_at.length >= 19) report.created_at.replace("T", " ").take(19) else report.created_at}", color = Color.Gray, fontSize = 12.sp)
                     }
                 }
 

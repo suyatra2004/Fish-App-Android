@@ -34,18 +34,16 @@ import com.example.fishapp.viewmodel.ReportUploadUiState
 @Composable
 fun DiseaseReportScreen(
     navController: NavHostController,
-    viewModel: FishViewModel, // Accepting the injected shared state machine securely
+    viewModel: FishViewModel,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
 
-    // Form Input States
     var pondName by remember { mutableStateOf("") }
     var reportName by remember { mutableStateOf("") }
     var symptoms by remember { mutableStateOf("") }
     var imageUri by remember { mutableStateOf<Uri?>(null) }
 
-    // Observe live submission state parameters to show the loading wheel spinner overlay
     val uploadState by viewModel.reportUploadState
 
     val imagePickerLauncher = rememberLauncherForActivityResult(
@@ -54,10 +52,19 @@ fun DiseaseReportScreen(
         imageUri = uri
     }
 
-    // Reset upload feedback machine flags cleanly when screen builds fresh
     LaunchedEffect(Unit) {
         viewModel.resetReportUploadState()
     }
+
+    // FIXED: Added high-contrast black text field configurations
+    val textFieldColors = OutlinedTextFieldDefaults.colors(
+        focusedTextColor = Color.Black,
+        unfocusedTextColor = Color.Black,
+        focusedBorderColor = BrandGreen,
+        unfocusedBorderColor = Color.Gray.copy(alpha = 0.4f),
+        focusedLabelColor = BrandGreen,
+        unfocusedLabelColor = TextSecondary
+    )
 
     Scaffold(
         topBar = {
@@ -83,7 +90,8 @@ fun DiseaseReportScreen(
                 onValueChange = { pondName = it },
                 label = { Text("Pond Name") },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(8.dp),
+                colors = textFieldColors
             )
 
             // --- 2. REPORT TITLE INPUT ---
@@ -92,7 +100,8 @@ fun DiseaseReportScreen(
                 onValueChange = { reportName = it },
                 label = { Text("Report Title / Issue Name") },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(8.dp),
+                colors = textFieldColors
             )
 
             // --- 3. PATHOLOGICAL SYMPTOMS INPUT ---
@@ -103,10 +112,11 @@ fun DiseaseReportScreen(
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 3,
                 maxLines = 5,
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(8.dp),
+                colors = textFieldColors
             )
 
-            // --- 4. IMAGE UPLOAD AREA WITH CONTENT SELECTION ---
+            // --- 4. IMAGE UPLOAD AREA ---
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -124,6 +134,7 @@ fun DiseaseReportScreen(
                         contentScale = ContentScale.Crop
                     )
                 } else {
+                    // FIXED: Aligned alignment to CenterHorizontally to prevent composition crashes
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(Icons.Default.CloudUpload, contentDescription = null, tint = BrandGreen, modifier = Modifier.size(36.dp))
                         Spacer(modifier = Modifier.height(8.dp))
@@ -134,7 +145,7 @@ fun DiseaseReportScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // --- 5. ACTION BUTTON WITH LOADING SPIN LOGIC ---
+            // --- 5. ACTION BUTTON ---
             val isLoading = uploadState is ReportUploadUiState.Loading
 
             Button(
@@ -150,14 +161,14 @@ fun DiseaseReportScreen(
                             imageUri = imageUri!!,
                             onSuccess = {
                                 Toast.makeText(context, "Report posted successfully!", Toast.LENGTH_SHORT).show()
-                                navController.popBackStack() // Smoothly return to the choice menu portal scene
+                                navController.popBackStack()
                             }
                         )
                     }
                 },
                 modifier = Modifier.fillMaxWidth().height(50.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = BrandGreen),
-                enabled = !isLoading // Blocks double submission clicks while transmission runs
+                enabled = !isLoading
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
@@ -166,7 +177,6 @@ fun DiseaseReportScreen(
                 }
             }
 
-            // Error display warning message logs
             if (uploadState is ReportUploadUiState.Error) {
                 Text(
                     text = (uploadState as ReportUploadUiState.Error).message,
