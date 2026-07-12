@@ -3,6 +3,7 @@ package com.example.fishapp.ui.screens
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -18,19 +19,23 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
-import com.example.fishapp.api.AdminPondResponse // FIXED: Sourced from api package
-import com.example.fishapp.api.AdminReportResponse // FIXED: Sourced from api package
+import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
+import com.example.fishapp.api.AdminPondResponse
+import com.example.fishapp.api.AdminReportResponse
 import com.example.fishapp.ui.components.AquaCard
 import com.example.fishapp.ui.theme.*
 import com.example.fishapp.viewmodel.FishViewModel
 
-@OptIn(ExperimentalMaterial3Api::class) // FIXED: Required for Material 3 TopAppBar layout containers
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminDashboard(
     navController: NavHostController,
@@ -45,7 +50,10 @@ fun AdminDashboard(
     val isLoading by viewModel.isAdminLoading
     val errorMessage by viewModel.adminErrorMessage
 
-    // Refresh metrics on dashboard mount
+    // Detail Pop-Up States
+    var selectedPondDetail by remember { mutableStateOf<AdminPondResponse?>(null) }
+    var selectedReportDetail by remember { mutableStateOf<AdminReportResponse?>(null) }
+
     LaunchedEffect(selectedTab) {
         if (selectedTab == 0) {
             viewModel.fetchAllAdminPonds()
@@ -56,7 +64,7 @@ fun AdminDashboard(
 
     Scaffold(
         topBar = {
-            TopAppBar( // FIXED: Replaced SmallTopAppBar with standard Material 3 TopAppBar
+            TopAppBar(
                 title = {
                     Column {
                         Text("Admin Control Center", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 18.sp)
@@ -66,94 +74,105 @@ fun AdminDashboard(
                 actions = {
                     IconButton(onClick = {
                         viewModel.logoutUser()
-                        navController.popBackStack()
+                        // FIXED: Wipes backstack history and safely targets the authentication screen
+                        navController.navigate("login") {
+                            popUpTo(0) { inclusive = true }
+                        }
                     }) {
                         Icon(Icons.Default.Logout, contentDescription = "Logout", tint = Color.White)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = BrandGreen) // FIXED: Correct Material 3 color builder function
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = BrandGreen)
             )
         },
         containerColor = AquaBackground
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            // --- TAB SELECTOR COMPONENT ---
-            TabRow(
-                selectedTabIndex = selectedTab,
-                containerColor = Color.White,
-                contentColor = BrandGreen
-            ) {
-                Tab(
-                    selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
-                    text = { Text("Ponds Moderation", fontWeight = FontWeight.Bold) }
-                )
-                Tab(
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
-                    text = { Text("Disease Reports", fontWeight = FontWeight.Bold) }
-                )
-            }
-
-            // --- MAIN LIST FEED OVERLAY ---
-            if (isLoading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = BrandGreen)
-                }
-            } else if (errorMessage != null) {
-                Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
-                    Text(errorMessage!!, color = Color.Red, fontSize = 14.sp)
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                TabRow(
+                    selectedTabIndex = selectedTab,
+                    containerColor = Color.White,
+                    contentColor = BrandGreen
                 ) {
-                    if (selectedTab == 0) {
-                        if (adminPonds.isEmpty()) {
-                            item { Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) { Text("No ponds listed for review.", color = TextSecondary) } }
-                        }
-                        items(adminPonds) { pond ->
-                            AdminPondCard(
-                                pond = pond,
-                                onApprove = {
-                                    viewModel.moderatePondStatus(pond.id, approve = true) {
-                                        Toast.makeText(context, "Pond approved successfully!", Toast.LENGTH_SHORT).show()
+                    Tab(
+                        selected = selectedTab == 0,
+                        onClick = { selectedTab = 0 },
+                        text = { Text("Ponds Moderation", fontWeight = FontWeight.Bold) }
+                    )
+                    Tab(
+                        selected = selectedTab == 1,
+                        onClick = { selectedTab = 1 },
+                        text = { Text("Disease Reports", fontWeight = FontWeight.Bold) }
+                    )
+                }
+
+                if (isLoading) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = BrandGreen)
+                    }
+                } else if (errorMessage != null) {
+                    Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
+                        Text(errorMessage!!, color = Color.Red, fontSize = 14.sp)
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        if (selectedTab == 0) {
+                            if (adminPonds.isEmpty()) {
+                                item { Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) { Text("No ponds listed for review.", color = TextSecondary) } }
+                            }
+                            items(adminPonds) { pond ->
+                                AdminPondCard(
+                                    pond = pond,
+                                    onClick = { selectedPondDetail = pond },
+                                    onApprove = {
+                                        viewModel.moderatePondStatus(pond.id, approve = true) {
+                                            Toast.makeText(context, "Pond approved successfully!", Toast.LENGTH_SHORT).show()
+                                        }
+                                    },
+                                    onReject = {
+                                        viewModel.moderatePondStatus(pond.id, approve = false) {
+                                            Toast.makeText(context, "Pond unverified/rejected.", Toast.LENGTH_SHORT).show()
+                                        }
                                     }
-                                },
-                                onReject = {
-                                    viewModel.moderatePondStatus(pond.id, approve = false) {
-                                        Toast.makeText(context, "Pond unverified/rejected.", Toast.LENGTH_SHORT).show()
+                                )
+                            }
+                        } else {
+                            if (adminReports.isEmpty()) {
+                                item { Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) { Text("No disease health alerts submitted.", color = TextSecondary) } }
+                            }
+                            items(adminReports) { report ->
+                                AdminReportCard(
+                                    report = report,
+                                    onClick = { selectedReportDetail = report },
+                                    onApprove = {
+                                        viewModel.moderateReportStatus(report.id, approve = true) {
+                                            Toast.makeText(context, "Report marked as Resolved!", Toast.LENGTH_SHORT).show()
+                                        }
+                                    },
+                                    onReject = {
+                                        viewModel.moderateReportStatus(report.id, approve = false) {
+                                            Toast.makeText(context, "Report status updated to Under Review.", Toast.LENGTH_SHORT).show()
+                                        }
                                     }
-                                }
-                            )
-                        }
-                    } else {
-                        if (adminReports.isEmpty()) {
-                            item { Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) { Text("No disease health alerts submitted.", color = TextSecondary) } }
-                        }
-                        items(adminReports) { report ->
-                            AdminReportCard(
-                                report = report,
-                                onApprove = {
-                                    viewModel.moderateReportStatus(report.id, approve = true) {
-                                        Toast.makeText(context, "Report marked as Resolved!", Toast.LENGTH_SHORT).show()
-                                    }
-                                },
-                                onReject = {
-                                    viewModel.moderateReportStatus(report.id, approve = false) {
-                                        Toast.makeText(context, "Report status updated to Under Review.", Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            )
+                                )
+                            }
                         }
                     }
                 }
+            }
+
+            // --- POND DETAILED DIALOG MODULE ---
+            selectedPondDetail?.let { pond ->
+                AdminPondDetailDialog(pond = pond, onDismiss = { selectedPondDetail = null })
+            }
+
+            // --- REPORT DETAILED DIALOG MODULE ---
+            selectedReportDetail?.let { report ->
+                AdminReportDetailDialog(report = report, onDismiss = { selectedReportDetail = null })
             }
         }
     }
@@ -162,11 +181,12 @@ fun AdminDashboard(
 @Composable
 fun AdminPondCard(
     pond: AdminPondResponse,
+    onClick: () -> Unit,
     onApprove: () -> Unit,
     onReject: () -> Unit
 ) {
     val context = LocalContext.current
-    AquaCard {
+    AquaCard(modifier = Modifier.clickable { onClick() }) {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Column(modifier = Modifier.weight(1f)) {
@@ -233,11 +253,12 @@ fun AdminPondCard(
 @Composable
 fun AdminReportCard(
     report: AdminReportResponse,
+    onClick: () -> Unit,
     onApprove: () -> Unit,
     onReject: () -> Unit
 ) {
     val context = LocalContext.current
-    AquaCard {
+    AquaCard(modifier = Modifier.clickable { onClick() }) {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Column(modifier = Modifier.weight(1f)) {
@@ -299,4 +320,123 @@ fun AdminReportCard(
             }
         }
     }
+}
+
+// ==========================================
+// DETAILED INSPECTION MODAL DIALOG COMPOSABLES
+// ==========================================
+
+@Composable
+fun AdminPondDetailDialog(pond: AdminPondResponse, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val backendHostAddress = "192.168.0.176:8000"
+    val rawToken = com.example.fishapp.api.RetrofitClient.getAuthToken() ?: ""
+    val authHeaderValue = if (rawToken.startsWith("Bearer ", ignoreCase = true)) rawToken else "Bearer $rawToken"
+
+    val imageUrl = when {
+        pond.image_url.isNullOrBlank() -> ""
+        pond.image_url.startsWith("http") -> pond.image_url
+        pond.image_url.startsWith("/") -> "http://$backendHostAddress${pond.image_url}"
+        else -> "http://$backendHostAddress/admin/ponds/${pond.id}/image"
+    }
+
+    val painter = rememberAsyncImagePainter(
+        model = ImageRequest.Builder(context)
+            .data(imageUrl)
+            .addHeader("Authorization", authHeaderValue)
+            .crossfade(true)
+            .build()
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = BrandGreen)) {
+                Text("Close Layout")
+            }
+        },
+        title = { Text(pond.name, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextPrimary) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(160.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.LightGray)
+                ) {
+                    Image(
+                        painter = painter,
+                        contentDescription = "Pond Geo-Tagged Image Asset",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+                Text("• Owner Username: ${pond.owner_username}", fontSize = 13.sp, color = Color.Black)
+                Text("• Total Asset Area: ${pond.estimated_area ?: 0.0} sq ft", fontSize = 13.sp, color = Color.Black)
+                Text("• Species Cultured: ${pond.fish_species.joinToString(", ")}", fontSize = 13.sp, color = Color.Black)
+                Text("• GPS Coordinates: Lat ${pond.latitude ?: 0.0} / Lng ${pond.longitude ?: 0.0}", fontSize = 13.sp, color = Color.Black)
+                Text("• Log Timestamp: ${pond.created_at.take(19).replace("T", " ")}", fontSize = 12.sp, color = Color.Gray)
+            }
+        },
+        containerColor = Color.White,
+        shape = RoundedCornerShape(14.dp)
+    )
+}
+
+@Composable
+fun AdminReportDetailDialog(report: AdminReportResponse, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val backendHostAddress = "192.168.0.176:8000"
+    val rawToken = com.example.fishapp.api.RetrofitClient.getAuthToken() ?: ""
+    val authHeaderValue = if (rawToken.startsWith("Bearer ", ignoreCase = true)) rawToken else "Bearer $rawToken"
+
+    val imageUrl = when {
+        report.photo_url.startsWith("http") -> report.photo_url
+        report.photo_url.startsWith("/") -> "http://$backendHostAddress${report.photo_url}"
+        else -> "http://$backendHostAddress/admin/reports/${report.id}/photo"
+    }
+
+    val painter = rememberAsyncImagePainter(
+        model = ImageRequest.Builder(context)
+            .data(imageUrl)
+            .addHeader("Authorization", authHeaderValue)
+            .crossfade(true)
+            .build()
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = BrandGreen)) {
+                Text("Dismiss View")
+            }
+        },
+        title = { Text(report.report_name, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextPrimary) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(160.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.LightGray)
+                ) {
+                    Image(
+                        painter = painter,
+                        contentDescription = "Outbreak Pathological Photo Asset",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+                Text("• Farmer Account: ${report.farmer_username}", fontSize = 13.sp, color = Color.Black)
+                Text("• Target Pond Body: ${report.pond_name} (ID: #${report.pond_id})", fontSize = 13.sp, color = Color.Black)
+                Text("• Reported Symptoms:", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.Black)
+                Text(report.symptoms, fontSize = 13.sp, color = Color.DarkGray, lineHeight = 18.sp)
+                Text("• Incident Date: ${report.created_at.take(19).replace("T", " ")}", fontSize = 12.sp, color = Color.Gray)
+            }
+        },
+        containerColor = Color.White,
+        shape = RoundedCornerShape(14.dp)
+    )
 }

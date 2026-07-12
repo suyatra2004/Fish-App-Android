@@ -51,10 +51,10 @@ class FishViewModel : ViewModel() {
     val selectedImageUri: State<Uri?> = _selectedImageUri
 
     // ==========================================
-    // NEW AUTHENTICATION STATES
+    // FIXED: AUTHENTICATION STATES TYPO RESOLVED
     // ==========================================
-    private val _authUriState = mutableStateOf<AuthUiState>(AuthUiState.Unauthenticated)
-    val authUriState: State<AuthUiState> = _authUriState
+    private val _authUiState = mutableStateOf<AuthUiState>(AuthUiState.Unauthenticated)
+    val authUiState: State<AuthUiState> = _authUiState
 
     // ==========================================
     // STEP 3: FARMER POND STATES
@@ -182,18 +182,18 @@ class FishViewModel : ViewModel() {
     // ==========================================
     fun loginUser(username: String, password: String) {
         viewModelScope.launch {
-            _authUriState.value = AuthUiState.Loading
+            _authUiState.value = AuthUiState.Loading
             try {
                 val response = RetrofitClient.instance.login(LoginRequest(username, password))
                 if (response.isSuccessful && response.body() != null) {
                     val token = response.body()!!.access_token
                     RetrofitClient.setAuthToken(token)
-                    _authUriState.value = AuthUiState.Authenticated
+                    _authUiState.value = AuthUiState.Authenticated
                 } else {
-                    _authUriState.value = AuthUiState.Error("Login failed: Invalid credentials")
+                    _authUiState.value = AuthUiState.Error("Login failed: Invalid credentials")
                 }
             } catch (e: Exception) {
-                _authUriState.value = AuthUiState.Error("Connection failed: Check if server is running on Wi-Fi")
+                _authUiState.value = AuthUiState.Error("Connection failed: Check if server is running on Wi-Fi")
             }
         }
     }
@@ -203,7 +203,7 @@ class FishViewModel : ViewModel() {
     // ==========================================
     fun registerConsumerAccount(username: String, password: String, fullName: String, phone: String) {
         viewModelScope.launch {
-            _authUriState.value = AuthUiState.Loading
+            _authUiState.value = AuthUiState.Loading
             try {
                 val payload = ConsumerRegisterRequest(
                     username = username,
@@ -215,17 +215,17 @@ class FishViewModel : ViewModel() {
                 if (response.isSuccessful) {
                     loginUser(username, password)
                 } else {
-                    _authUriState.value = AuthUiState.Error("Registration rejected: Account already exists.")
+                    _authUiState.value = AuthUiState.Error("Registration rejected: Account already exists.")
                 }
             } catch (e: Exception) {
-                _authUriState.value = AuthUiState.Error("Server unreachable. Verify backend host state.")
+                _authUiState.value = AuthUiState.Error("Server unreachable. Verify backend host state.")
             }
         }
     }
 
     fun registerManagementAccount(username: String, password: String, fullName: String, phone: String, role: String) {
         viewModelScope.launch {
-            _authUriState.value = AuthUiState.Loading
+            _authUiState.value = AuthUiState.Loading
             try {
                 val payload = FarmerRegisterRequest(
                     username = username,
@@ -249,10 +249,10 @@ class FishViewModel : ViewModel() {
                 if (response.isSuccessful) {
                     loginUser(username, password)
                 } else {
-                    _authUriState.value = AuthUiState.Error("Registration failed: Role criteria not met.")
+                    _authUiState.value = AuthUiState.Error("Registration failed: Role criteria not met.")
                 }
             } catch (e: Exception) {
-                _authUriState.value = AuthUiState.Error("Network error: Registration pipeline timeout.")
+                _authUiState.value = AuthUiState.Error("Network error: Registration pipeline timeout.")
             }
         }
     }
@@ -357,7 +357,7 @@ class FishViewModel : ViewModel() {
             try {
                 val response = RetrofitClient.instance.verifyPond(pondId, approve, "")
                 if (response.isSuccessful) {
-                    fetchAllAdminPonds() // Dynamic array state auto-refresh[cite: 1]
+                    fetchAllAdminPonds()
                     onComplete()
                 }
             } catch (e: Exception) {
@@ -371,7 +371,7 @@ class FishViewModel : ViewModel() {
             try {
                 val response = RetrofitClient.instance.verifyReport(reportId, approve, "")
                 if (response.isSuccessful) {
-                    fetchAllAdminReports() // Dynamic array state auto-refresh[cite: 1]
+                    fetchAllAdminReports()
                     onComplete()
                 }
             } catch (e: Exception) {
@@ -430,7 +430,8 @@ class FishViewModel : ViewModel() {
                     }
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.printStackTrace(
+                )
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     _reportUploadState.value = ReportUploadUiState.Error("Connection lost: ${e.localizedMessage}")
                 }
@@ -483,25 +484,38 @@ class FishViewModel : ViewModel() {
     }
 
     // ==========================================
-    // CLOSURE OPERATIONS
+    // FIXED CLOSURE OPERATIONS WITH API CALL INTEGRATION
     // ==========================================
     fun logoutUser() {
-        _authUriState.value = AuthUiState.Unauthenticated
-        _pondsList.value = emptyList()
-        _reportsList.value = emptyList()
-        _historyList.value = emptyList()
-        _currentDetailItem.value = null
-        _selectedPond.value = null
-        _selectedReport.value = null
-        _reportUploadState.value = ReportUploadUiState.Idle
+        viewModelScope.launch {
+            try {
+                val rawToken = RetrofitClient.getAuthToken() ?: ""
+                val authHeaderValue = if (rawToken.startsWith("Bearer ", ignoreCase = true)) rawToken else "Bearer $rawToken"
 
-        // Clear Admin Specific State Caches cleanly on logout
-        _adminPondsList.value = emptyList()
-        _adminReportsList.value = emptyList()
-        _adminErrorMessage.value = null
+                // Triggers structural logout pipeline on backend server
+                RetrofitClient.instance.logout(authHeaderValue)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                // Wipe state machine parameters completely
+                _authUiState.value = AuthUiState.Unauthenticated
+                _pondsList.value = emptyList()
+                _reportsList.value = emptyList()
+                _historyList.value = emptyList()
+                _currentDetailItem.value = null
+                _selectedPond.value = null
+                _selectedReport.value = null
+                _reportUploadState.value = ReportUploadUiState.Idle
 
-        resetState()
-        RetrofitClient.clearAuthToken()
+                // Purge Admin caches
+                _adminPondsList.value = emptyList()
+                _adminReportsList.value = emptyList()
+                _adminErrorMessage.value = null
+
+                resetState()
+                RetrofitClient.clearAuthToken()
+            }
+        }
     }
 
     // ==========================================

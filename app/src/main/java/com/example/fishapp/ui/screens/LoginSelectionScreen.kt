@@ -43,7 +43,7 @@ fun LoginSelectionScreen(
     var selectedManagementRole by remember { mutableStateOf("Farmer") }
     var passwordVisible by remember { mutableStateOf(false) }
 
-    val authState by viewModel.authUriState
+    val authState by viewModel.authUiState
 
     // Wipes out field text dynamically whenever the user toggles between the Consumer and Management workspaces
     LaunchedEffect(isConsumerWorkspace) {
