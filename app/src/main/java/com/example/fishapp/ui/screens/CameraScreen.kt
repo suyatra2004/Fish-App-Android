@@ -36,8 +36,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.example.fishapp.ui.theme.BrandGreen
-import com.example.fishapp.ui.theme.TextPrimary
-import com.example.fishapp.ui.theme.TextSecondary
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
@@ -83,7 +81,7 @@ fun CameraScannerScreen(
             title = {
                 Text(
                     text = "Optimal Scanning Guidelines",
-                    color = TextPrimary,
+                    color = Color.Black, // FIXED: High-contrast visibility toggle
                     fontWeight = FontWeight.Bold,
                     fontSize = 19.sp,
                     textAlign = TextAlign.Center,
@@ -97,7 +95,7 @@ fun CameraScannerScreen(
                 ) {
                     Text(
                         text = "To ensure maximum classification accuracy from the AI model pipeline, keep these instructions in mind:",
-                        color = TextSecondary,
+                        color = Color.DarkGray, // FIXED: Clear readability rule configuration
                         fontSize = 13.sp,
                         lineHeight = 18.sp,
                         textAlign = TextAlign.Center,
@@ -110,6 +108,7 @@ fun CameraScannerScreen(
                 }
             },
             shape = RoundedCornerShape(16.dp),
+            containerColor = Color.White, // FIXED: Hardforces white layout backgrounds to combat device dark theme conflicts
             confirmButton = {
                 Button(
                     onClick = { showGuidelinesDialog = false },
@@ -145,7 +144,6 @@ fun CameraScannerScreen(
 
                     try {
                         cameraProvider.unbindAll()
-                        // FIXED: Bind both the active user screen preview and image capture use cases together
                         val camera = cameraProvider.bindToLifecycle(
                             lifecycleOwner,
                             CameraSelector.DEFAULT_BACK_CAMERA,
@@ -208,7 +206,6 @@ fun CameraScannerScreen(
             // Centralized Capture Shutter Button Action Map
             Surface(
                 onClick = {
-                    // Compile timestamped unique image name mapping registry entries
                     val name = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
                     val photoFile = File(context.cacheDir, "AquaSense_Scan_$name.jpg")
 
@@ -221,7 +218,7 @@ fun CameraScannerScreen(
                             override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
                                 val savedUri = Uri.fromFile(photoFile)
                                 onImageCaptured(savedUri)
-                                onClose() // Automatically return back to home screen context gracefully
+                                onClose()
                             }
 
                             override fun onError(exception: ImageCaptureException) {
@@ -251,8 +248,9 @@ private fun GuidelineRow(label: String, detailedInstruction: String) {
     ) {
         Text("•", color = BrandGreen, fontWeight = FontWeight.Bold, fontSize = 16.sp)
         Column {
-            Text(text = label, fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 13.sp)
-            Text(text = detailedInstruction, color = TextSecondary, fontSize = 12.sp, lineHeight = 16.sp)
+            // FIXED: Replaced customizable system text style constants with strict hardcoded dark contrast values
+            Text(text = label, fontWeight = FontWeight.Bold, color = Color.Black, fontSize = 13.sp)
+            Text(text = detailedInstruction, color = Color.DarkGray, fontSize = 12.sp, lineHeight = 16.sp)
         }
     }
 }
