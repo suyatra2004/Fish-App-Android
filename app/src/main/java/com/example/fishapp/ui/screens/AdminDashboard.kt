@@ -74,7 +74,7 @@ fun AdminDashboard(
                 actions = {
                     IconButton(onClick = {
                         viewModel.logoutUser()
-                        // FIXED: Safely redirects to login page by avoiding killing the destination node itself
+                        // FIXED: Safely navigates directly to the login path without popping the graph anchor line
                         navController.navigate("login") {
                             popUpTo("login") { inclusive = false }
                             launchSingleTop = true
@@ -334,13 +334,12 @@ fun AdminPondDetailDialog(pond: AdminPondResponse, onDismiss: () -> Unit) {
     val rawToken = com.example.fishapp.api.RetrofitClient.getAuthToken() ?: ""
     val authHeaderValue = if (rawToken.startsWith("Bearer ", ignoreCase = true)) rawToken else "Bearer $rawToken"
 
-    // FIXED: Formats absolute address pathways for direct endpoint streaming
+    // FIXED: Maps clean paths directly against the local network address host
     val imagePath = pond.image_url ?: ""
     val imageUrl = when {
         imagePath.startsWith("http://") || imagePath.startsWith("https://") -> imagePath
         imagePath.startsWith("/") -> "http://$backendHostAddress$imagePath"
-        imagePath.contains("admin/ponds") -> "http://$backendHostAddress/$imagePath"
-        else -> "http://$backendHostAddress/admin/ponds/${pond.id}/image"
+        else -> "http://$backendHostAddress/$imagePath"
     }
 
     val painter = rememberAsyncImagePainter(
@@ -394,13 +393,12 @@ fun AdminReportDetailDialog(report: AdminReportResponse, onDismiss: () -> Unit) 
     val rawToken = com.example.fishapp.api.RetrofitClient.getAuthToken() ?: ""
     val authHeaderValue = if (rawToken.startsWith("Bearer ", ignoreCase = true)) rawToken else "Bearer $rawToken"
 
-    // FIXED: Formats absolute address pathways for direct endpoint streaming
-    val photoPath = report.photo_url
+    // FIXED: Maps clean paths directly against the local network address host
+    val photoPath = report.photo_url ?: ""
     val imageUrl = when {
         photoPath.startsWith("http://") || photoPath.startsWith("https://") -> photoPath
         photoPath.startsWith("/") -> "http://$backendHostAddress$photoPath"
-        photoPath.contains("admin/reports") -> "http://$backendHostAddress/$photoPath"
-        else -> "http://$backendHostAddress/admin/reports/${report.id}/photo"
+        else -> "http://$backendHostAddress/$photoPath"
     }
 
     val painter = rememberAsyncImagePainter(
