@@ -6,7 +6,6 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -32,6 +31,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import coil.compose.rememberAsyncImagePainter
 import com.example.fishapp.ui.components.*
 import com.example.fishapp.ui.theme.*
@@ -39,6 +39,7 @@ import com.example.fishapp.viewmodel.FishViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 @Composable
 fun AddPondScreen(
@@ -55,12 +56,12 @@ fun AddPondScreen(
     var isSuccess by remember { mutableStateOf(false) }
 
     // Media & Geolocation processing states
+    var tempCameraImageUri by remember { mutableStateOf<Uri?>(null) }
     var watermarkedImageUri by remember { mutableStateOf<Uri?>(null) }
     var isProcessingLocation by remember { mutableStateOf(false) }
     var latitude by remember { mutableStateOf<Double?>(null) }
     var longitude by remember { mutableStateOf<Double?>(null) }
 
-    // NEW UTILITY STATE: Handles network loading indicator overlays
     var isRegisteringPond by remember { mutableStateOf(false) }
 
     val textFieldColors = OutlinedTextFieldDefaults.colors(
@@ -72,11 +73,25 @@ fun AddPondScreen(
         unfocusedLabelColor = TextSecondary
     )
 
-    // Photo picker configuration interacting with the GPS map engine handles
-    val photoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia(),
-        onResult = { uri ->
-            if (uri != null) {
+    // Helper function to spin up a secure file provider URI for the camera capture intent
+    fun createTempImageUri(): Uri {
+        val tempFile = File.createTempFile("camera_capture_", ".jpg", context.cacheDir).apply {
+            createNewFile()
+            deleteOnExit()
+        }
+        return FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider", // Make sure this matches your AndroidManifest provider authorities rule!
+            tempFile
+        )
+    }
+
+    // FIXED: Swapped gallery picker contract out entirely for the TakePicture Camera contract execution loop
+    val cameraCaptureLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture(),
+        onResult = { success ->
+            val capturedUri = tempCameraImageUri
+            if (success && capturedUri != null) {
                 isProcessingLocation = true
                 scope.launch(Dispatchers.IO) {
                     val hasFineLocation = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
@@ -91,7 +106,7 @@ fun AddPondScreen(
                             val addressText = com.example.fishapp.utils.LocationWatermarkEngine.getReadableAddress(context, location.latitude, location.longitude)
                             val stampedUri = com.example.fishapp.utils.LocationWatermarkEngine.addGpsWatermark(
                                 context = context,
-                                sourceUri = uri,
+                                sourceUri = capturedUri,
                                 lat = location.latitude,
                                 lng = location.longitude,
                                 addressText = addressText
@@ -118,20 +133,23 @@ fun AddPondScreen(
         }
     )
 
-    // Multi-Permission runtime authorization verification
-    val permissionLauncher = rememberLauncherForActivityResult(
+    // Multi-Permission runtime authorization verification supporting both Camera and Location checks
+    val runtimePermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-            permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true) {
-            photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+        val cameraGranted = permissions[Manifest.permission.CAMERA] == true
+        val locationGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true || permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+
+        if (cameraGranted && locationGranted) {
+            val freshUri = createTempImageUri()
+            tempCameraImageUri = freshUri
+            cameraCaptureLauncher.launch(freshUri)
         } else {
-            Toast.makeText(context, "Location rights are mandatory for geo-tagged pond registration.", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, "Camera and Location permissions are mandatory to capture real-time geo-tagged assets.", Toast.LENGTH_LONG).show()
         }
     }
 
     if (isSuccess) {
-        // FIXED: Replaced missing SuccessView component with a robust native Material 3 AlertDialog
         AlertDialog(
             onDismissRequest = { onBack() },
             confirmButton = {
@@ -166,7 +184,7 @@ fun AddPondScreen(
             ) {
                 SectionLabel("POND SPECIFICATIONS")
 
-                // --- LIVE GEO-TAGGED GALLERY CONTROLLER BOX ---
+                // --- LIVE CAMERA CONTROLLER BOX ---
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -174,12 +192,22 @@ fun AddPondScreen(
                         .background(Color.White, RoundedCornerShape(12.dp))
                         .clip(RoundedCornerShape(12.dp))
                         .clickable(enabled = !isRegisteringPond) {
+                            val cameraCheck = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
                             val fineLoc = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
                             val coarseLoc = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION)
-                            if (fineLoc == PackageManager.PERMISSION_GRANTED || coarseLoc == PackageManager.PERMISSION_GRANTED) {
-                                photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+
+                            if (cameraCheck == PackageManager.PERMISSION_GRANTED && (fineLoc == PackageManager.PERMISSION_GRANTED || coarseLoc == PackageManager.PERMISSION_GRANTED)) {
+                                val freshUri = createTempImageUri()
+                                tempCameraImageUri = freshUri
+                                cameraCaptureLauncher.launch(freshUri)
                             } else {
-                                permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                                runtimePermissionLauncher.launch(
+                                    arrayOf(
+                                        Manifest.permission.CAMERA,
+                                        Manifest.permission.ACCESS_FINE_LOCATION,
+                                        Manifest.permission.ACCESS_COARSE_LOCATION
+                                    )
+                                )
                             }
                         },
                     contentAlignment = Alignment.Center
@@ -193,7 +221,7 @@ fun AddPondScreen(
                     } else if (watermarkedImageUri != null) {
                         Image(
                             painter = rememberAsyncImagePainter(watermarkedImageUri),
-                            contentDescription = "Watermarked Pond Preview",
+                            contentDescription = "Watermarked Camera Captured Preview",
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
                         )
@@ -201,8 +229,8 @@ fun AddPondScreen(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(Icons.Default.AddAPhoto, contentDescription = null, tint = BrandGreen, modifier = Modifier.size(32.dp))
                             Spacer(modifier = Modifier.height(6.dp))
-                            Text("Upload Geo-Tagged Image", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
-                            Text("Required for verification audit", fontSize = 11.sp, color = TextSecondary)
+                            Text("Click Geo-Tagged Photo via Camera", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
+                            Text("Required for live verification audit", fontSize = 11.sp, color = TextSecondary)
                         }
                     }
                 }
@@ -259,14 +287,14 @@ fun AddPondScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // --- PIPELINE COMPLIANT UPLOAD SUBMIT BUTTON ---
+                // --- SUBMIT BUTTON ---
                 Button(
                     onClick = {
                         val areaValue = area.toDoubleOrNull()
                         val speciesList = fishType.split(",").map { it.trim() }.filter { it.isNotEmpty() }
 
                         if (pondName.isBlank() || areaValue == null || speciesList.isEmpty() || watermarkedImageUri == null || latitude == null || longitude == null) {
-                            Toast.makeText(context, "Please provide complete details and select a valid image.", Toast.LENGTH_LONG).show()
+                            Toast.makeText(context, "Please click a photo and complete all specifications fields.", Toast.LENGTH_LONG).show()
                         } else {
                             isRegisteringPond = true
 
